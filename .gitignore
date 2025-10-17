@@ -1,0 +1,190 @@
+# Dependencies
+node_modules/
+vendor/
+composer.lock
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+storage/logs/
+storage/logs/*.log
+storage/logs/laravel.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+
+# Laravel specific
+/vendor/
+node_modules/
+npm-debug.log
+yarn-error.log
+.env
+.phpunit.result.cache
+storage/app/public/
+storage/framework/cache/data/
+storage/framework/sessions/
+storage/framework/views/
+storage/logs/
+storage/debugbar/
+bootstrap/cache/
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Database
+*.sqlite
+*.sqlite-journal
+storage/database/
+
+# Cache
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+
+# Build outputs
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.nuxt/
+frontend/.cache/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+
+# Redis dump
+dump.rdb
+
+# MySQL
+*.sql
+*.sql.gz
+
+# Testing
+coverage/
+.nyc_output/
+phpunit.xml
+.phpunit.result.cache
+
+# Frontend specific
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+
+# Backend specific
+backend/vendor/
+backend/node_modules/
+backend/.env
+backend/.env.backup
+backend/.env.production
+backend/.phpunit.result.cache
+backend/storage/logs/
+backend/storage/app/public/
+backend/storage/framework/cache/
+backend/storage/framework/sessions/
+backend/storage/framework/views/
+backend/bootstrap/cache/
+backend/storage/debugbar/
+
+# Documentation build
+docs/.vuepress/dist/
+docs/_book/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.war
+*.ear
+*.sar
+*.class
+
+# Profiling files
+*.prof
+
+# Custom
+.env.local.php
+.env.production.php
+.robo
+.robo/cache/
+.robo/log/
+.robo/tmp/
