@@ -1,0 +1,250 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: sistema_visitas_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: mbstring, mysql, redis, xml, ctype, iconv, intl, pdo, pdo_mysql
+        coverage: xdebug
+    
+    - name: Cache Composer packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.composer/cache/files
+        key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-composer-
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: composer install --prefer-dist --no-progress --no-suggest
+    
+    - name: Copy environment file
+      working-directory: ./backend
+      run: cp .env.example .env
+    
+    - name: Generate key
+      working-directory: ./backend
+      run: php artisan key:generate
+    
+    - name: JWT Secret
+      working-directory: ./backend
+      run: php artisan jwt:secret
+    
+    - name: Directory Permissions
+      working-directory: ./backend
+      run: chmod -R 777 storage bootstrap/cache
+    
+    - name: Run Migrations
+      working-directory: ./backend
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: sistema_visitas_test
+        DB_USERNAME: root
+        DB_PASSWORD: password
+        REDIS_HOST: 127.0.0.1
+        REDIS_PORT: 6379
+      run: php artisan migrate --seed
+    
+    - name: Run Tests
+      working-directory: ./backend
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: sistema_visitas_test
+        DB_USERNAME: root
+        DB_PASSWORD: password
+        REDIS_HOST: 127.0.0.1
+        REDIS_PORT: 6379
+      run: php artisan test --coverage-clover=coverage.xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./backend/coverage.xml
+        flags: backend
+        name: backend-coverage
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Run linter
+      working-directory: ./frontend
+      run: npm run lint
+    
+    - name: Run tests
+      working-directory: ./frontend
+      run: npm run test:unit -- --coverage
+    
+    - name: Build
+      working-directory: ./frontend
+      run: npm run build
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+  security-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: composer install --prefer-dist --no-progress --no-suggest
+    
+    - name: Security Checker
+      working-directory: ./backend
+      run: composer audit
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Security Audit Frontend
+      working-directory: ./frontend
+      run: |
+        npm audit --audit-level moderate
+        npm audit fix --dry-run
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: |
+        composer install --prefer-dist --no-progress --no-suggest
+        composer require --dev phpstan/phpstan
+    
+    - name: PHPStan Analysis
+      working-directory: ./backend
+      run: ./vendor/bin/phpstan analyse --level=5 app/
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: TypeScript Check
+      working-directory: ./frontend
+      run: npm run type-check
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, security-check, code-quality]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Login to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    
+    - name: Build and push backend
+      uses: docker/build-push-action@v4
+      with:
+        context: ./docker/php
+        push: true
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/sistema-visitas-backend:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/sistema-visitas-backend:${{ github.sha }}
+    
+    - name: Build and push frontend
+      uses: docker/build-push-action@v4
+      with:
+        context: ./frontend
+        push: true
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/sistema-visitas-frontend:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/sistema-visitas-frontend:${{ github.sha }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-docker
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to production
+      run: |
+        echo "Desplegando a producción..."
+        # Aquí irían los comandos de despliegue
+        # Por ejemplo: SSH a servidor, actualizar contenedores, etc.
+      env:
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
