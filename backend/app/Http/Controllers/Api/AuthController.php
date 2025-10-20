@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
 class AuthController extends Controller
 {
@@ -38,15 +40,17 @@ class AuthController extends Controller
                 'status' => 1,
             ]);
 
-            $token = $user->createToken('auth-token')->plainTextToken;
+            // Generar token JWT
+            $token = JWTAuth::fromUser($user);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Usuario registrado exitosamente',
                 'data' => [
                     'user' => $user,
-                    'token' => $token,
-                    'token_type' => 'Bearer'
+                    'access_token' => $token,
+                    'token_type' => 'bearer',
+                    'expires_in' => JWTAuth::factory()->getTTL() * 60
                 ]
             ], 201);
 
@@ -72,31 +76,63 @@ class AuthController extends Controller
     {
         try {
             $request->validate([
-                'email' => 'required|string|email',
-                'password' => 'required|string',
+                'login' => 'required|string|max:191', // Puede ser username o email
+                'password' => 'required|string|min:8|max:255',
             ]);
 
-            if (!Auth::attempt($request->only('email', 'password'))) {
+            // Determinar si es email o username
+            $loginField = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+            
+            // Verificar si el usuario existe y está activo
+            $user = User::where($loginField, $request->login)->first();
+            
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Credenciales inválidas'
+                    'message' => 'Usuario no encontrado',
+                    'error' => 'User not found'
+                ], 404);
+            }
+
+            // Verificar que el usuario esté activo
+            if ($user->status !== 'active') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario inactivo',
+                    'error' => 'User inactive'
+                ], 403);
+            }
+
+            $credentials = [
+                $loginField => $request->login,
+                'password' => $request->password
+            ];
+
+            // Intentar autenticar con JWT
+            if (!$token = JWTAuth::attempt($credentials)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Credenciales inválidas',
+                    'error' => 'Invalid credentials'
                 ], 401);
             }
 
-            $user = Auth::user();
-            
             // Actualizar último login
             $user->update(['last_login_at' => now()]);
 
-            $token = $user->createToken('auth-token')->plainTextToken;
+            // Cargar relaciones del usuario
+            $user->load(['role', 'employee']);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Login exitoso',
                 'data' => [
                     'user' => $user,
-                    'token' => $token,
-                    'token_type' => 'Bearer'
+                    'access_token' => $token,
+                    'token_type' => 'bearer',
+                    'expires_in' => JWTAuth::factory()->getTTL() * 60,
+                    'issued_at' => now()->toISOString(),
+                    'expires_at' => now()->addMinutes(JWTAuth::factory()->getTTL())->toISOString()
                 ]
             ]);
 
@@ -110,7 +146,8 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al iniciar sesión',
-                'error' => $e->getMessage()
+                'error' => 'Login failed',
+                'details' => $e->getMessage()
             ], 500);
         }
     }
@@ -121,15 +158,15 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         try {
-            // Revocar todos los tokens del usuario
-            $request->user()->tokens()->delete();
+            // Invalidar el token JWT
+            JWTAuth::invalidate(JWTAuth::getToken());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Logout exitoso'
             ]);
 
-        } catch (\Exception $e) {
+        } catch (JWTException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al cerrar sesión',
@@ -144,13 +181,8 @@ class AuthController extends Controller
     public function refreshToken(Request $request)
     {
         try {
-            $user = $request->user();
-            
-            // Revocar token actual
-            $request->user()->currentAccessToken()->delete();
-            
-            // Crear nuevo token
-            $token = $user->createToken('auth-token')->plainTextToken;
+            // Refrescar el token JWT
+            $token = JWTAuth::refresh(JWTAuth::getToken());
 
             return response()->json([
                 'success' => true,
@@ -161,12 +193,57 @@ class AuthController extends Controller
                 ]
             ]);
 
-        } catch (\Exception $e) {
+        } catch (JWTException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al refrescar token',
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Obtener perfil del usuario autenticado
+     */
+    public function profile(Request $request)
+    {
+        try {
+            // Obtener usuario desde el token JWT
+            $user = JWTAuth::parseToken()->authenticate();
+            
+            // Cargar relaciones si existen
+            $user->load(['role', 'employee']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Perfil obtenido exitosamente',
+                'data' => [
+                    'user' => $user
+                ]
+            ]);
+
+        } catch (JWTException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener perfil',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Formatear respuesta con token JWT
+     */
+    protected function respondWithToken($token)
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Operación exitosa',
+            'data' => [
+                'access_token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => JWTAuth::factory()->getTTL() * 60
+            ]
+        ]);
     }
 }

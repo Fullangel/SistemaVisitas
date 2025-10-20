@@ -11,7 +11,7 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -28,7 +28,6 @@ class User extends Authenticatable implements JWTSubject
         'phone',
         'address',
         'last_login_at',
-        'web_token',
         'telegram_id',
         'role_id',
         'email_verified_at',
@@ -52,7 +51,6 @@ class User extends Authenticatable implements JWTSubject
     protected $casts = [
         'email_verified_at' => 'datetime',
         'last_login_at' => 'datetime',
-        'status' => 'integer',
     ];
 
     /**
@@ -68,7 +66,7 @@ class User extends Authenticatable implements JWTSubject
      */
     public function employee()
     {
-        return $this->hasOne(Employee::class);
+        return $this->hasOne(Employee::class, 'email', 'email');
     }
 
     /**
@@ -77,6 +75,14 @@ class User extends Authenticatable implements JWTSubject
     public function getFullNameAttribute()
     {
         return "{$this->first_name} {$this->last_name}";
+    }
+
+    /**
+     * Get the username for authentication.
+     */
+    public function username()
+    {
+        return 'username';
     }
 
     /**
@@ -96,6 +102,16 @@ class User extends Authenticatable implements JWTSubject
      */
     public function getJWTCustomClaims()
     {
-        return [];
+        return [
+            'role' => $this->role ? $this->role->name : 'user',
+            'role_id' => $this->role_id,
+            'username' => $this->username,
+            'email' => $this->email,
+            'full_name' => $this->full_name,
+            'status' => $this->status,
+            'issued_at' => now()->toISOString(),
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent()
+        ];
     }
 }

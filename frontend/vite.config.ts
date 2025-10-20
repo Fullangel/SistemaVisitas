@@ -1,23 +1,25 @@
 import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import vueJsx from '@vitejs/plugin-vue-jsx'
+import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
+import tailwindcss from 'tailwindcss'
+import autoprefixer from 'autoprefixer'
 
 export default defineConfig({
   plugins: [
-    vue(),
-    vueJsx(),
+    react(),
   ],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
       '@components': resolve(__dirname, 'src/components'),
-      '@views': resolve(__dirname, 'src/pages'),
+      '@pages': resolve(__dirname, 'src/pages'),
       '@stores': resolve(__dirname, 'src/stores'),
       '@utils': resolve(__dirname, 'src/utils'),
       '@types': resolve(__dirname, 'src/types'),
-      '@composables': resolve(__dirname, 'src/composables'),
+      '@hooks': resolve(__dirname, 'src/hooks'),
       '@assets': resolve(__dirname, 'src/assets'),
+      '@services': resolve(__dirname, 'src/services'),
+      '@contexts': resolve(__dirname, 'src/contexts'),
     },
   },
   server: {
@@ -29,7 +31,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },
@@ -42,30 +44,30 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vue: ['vue', 'vue-router'],
-          pinia: ['pinia'],
-          ui: ['@headlessui/vue', '@heroicons/vue'],
-          utils: ['@vueuse/core', 'dayjs'],
+          react: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@headlessui/react', '@heroicons/react'],
+          utils: ['dayjs', 'react-hook-form'],
+          query: ['react-query'],
         },
       },
     },
   },
   optimizeDeps: {
     include: [
-      'vue',
-      'vue-router',
-      'pinia',
-      '@vueuse/core',
-      'dayjs',
-      '@headlessui/vue',
-      '@heroicons/vue',
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'react-hook-form',
+      'react-query',
+      '@headlessui/react',
+      '@heroicons/react',
     ],
   },
   css: {
     postcss: {
       plugins: [
-        require('tailwindcss'),
-        require('autoprefixer'),
+        tailwindcss,
+        autoprefixer,
       ],
     },
   },

@@ -30,15 +30,29 @@ class RolesTableSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'security',
-                'description' => 'Security personnel with visit management access',
+                'name' => 'supervisor',
+                'description' => 'Supervisor with visit management and employee oversight',
+                'permissions' => [
+                    'visits.create', 'visits.read', 'visits.update', 'visits.delete',
+                    'employees.create', 'employees.read', 'employees.update',
+                    'departments.read',
+                    'headquarters.read',
+                    'regions.read',
+                    'reports.read', 'reports.export',
+                    'notifications.read', 'notifications.send',
+                ],
+            ],
+            [
+                'name' => 'recepcion',
+                'description' => 'Receptionist with visit registration and basic management',
                 'permissions' => [
                     'visits.create', 'visits.read', 'visits.update',
                     'employees.read',
                     'departments.read',
                     'headquarters.read',
                     'regions.read',
-                    'reports.read',
+                    'visitors.create', 'visitors.read', 'visitors.update',
+                    'notifications.read', 'notifications.send',
                 ],
             ],
             [

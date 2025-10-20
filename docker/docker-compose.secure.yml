@@ -1,0 +1,212 @@
+version: '3.8'
+
+# Configuración segura y optimizada para evitar conflictos de puertos
+services:
+  # Backend Laravel con configuración segura
+  app:
+    build:
+      context: ../
+      dockerfile: docker/php/Dockerfile
+    container_name: visitas_app_secure
+    restart: unless-stopped
+    working_dir: /var/www/html
+    user: root
+    volumes:
+      - ../backend:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=visitantes
+      - DB_USERNAME=visitante
+      - DB_PASSWORD=visitante1
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+      - REDIS_PORT=6379
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+      - MAIL_USERNAME=null
+      - MAIL_PASSWORD=null
+      - MAIL_ENCRYPTION=null
+      - MAIL_FROM_ADDRESS=noreply@visitas.local
+      - MAIL_FROM_NAME="${APP_NAME:-Sistema Visitas}"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - visitas-secure-network
+    healthcheck:
+      test: ["CMD", "php", "artisan", "route:list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx con configuración de seguridad mejorada
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: visitas_nginx_secure
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-8080}:80"
+    volumes:
+      - ../backend:/var/www
+    depends_on:
+      - app
+    networks:
+      - visitas-secure-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MySQL con puerto alternativo y seguridad mejorada
+  db:
+    image: mysql:8.0
+    container_name: visitas_db_secure
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"  # Puerto alternativo para evitar conflictos
+    environment:
+      MYSQL_DATABASE: visitantes
+      MYSQL_ROOT_PASSWORD: visitante1
+      MYSQL_USER: visitante
+      MYSQL_PASSWORD: visitante1
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - db-secure-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - visitas-secure-network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -pvisitante1 --silent || exit 1"]
+      timeout: 30s
+      retries: 20
+      interval: 20s
+      start_period: 120s
+
+  # Redis con autenticación y seguridad mejorada
+  redis:
+    image: redis:7-alpine
+    container_name: visitas_redis_secure
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6380}:6379"  # Puerto alternativo
+    volumes:
+      - redis-secure-data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - visitas-secure-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # Laravel Horizon para gestión de colas
+  horizon:
+    build:
+      context: ../
+      dockerfile: docker/php/Dockerfile
+    container_name: visitas_horizon_secure
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ../backend:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - APP_ENV=local
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=visitantes
+      - DB_USERNAME=visitante
+      - DB_PASSWORD=visitante1
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+      - REDIS_PORT=6379
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+    depends_on:
+      - db
+      - redis
+    networks:
+      - visitas-secure-network
+    command: ["php", "artisan", "horizon"]
+
+  # Frontend con configuración segura para desarrollo
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.dev
+    container_name: visitas_frontend_secure
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    # No se necesitan volúmenes ya que los archivos están en la imagen
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:${NGINX_PORT:-8080}/api
+      - VITE_APP_ENV=local
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - nginx
+    networks:
+      - visitas-secure-network
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Mailhog para pruebas de email (puerto alternativo)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: visitas_mailhog_secure
+    restart: unless-stopped
+    ports:
+      - "${MAILHOG_HTTP_PORT:-8026}:8025"  # HTTP interface
+      - "${MAILHOG_SMTP_PORT:-1026}:1025"  # SMTP server
+    networks:
+      - visitas-secure-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8025"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  visitas-secure-network:
+    driver: bridge
+    name: visitas-secure-network
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+volumes:
+  db-secure-data:
+    driver: local
+  redis-secure-data:
+    driver: local
+  node_modules:
+    driver: local

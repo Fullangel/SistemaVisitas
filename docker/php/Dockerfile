@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     cron \
     nginx \
+    netcat-traditional \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -40,12 +41,12 @@ RUN sed -i 's/user = www-data/user = www/g' /usr/local/etc/php-fpm.d/www.conf &&
 WORKDIR /var/www
 
 # Copiar configuraciones
-COPY local.ini /usr/local/etc/php/conf.d/local.ini
-COPY php-fpm.conf /usr/local/etc/php-fpm.d/www.conf
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY ./docker/php/local.ini /usr/local/etc/php/conf.d/local.ini
+COPY ./docker/php/php-fpm.conf /usr/local/etc/php-fpm.d/www.conf
+COPY ./docker/php/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Copiar script de entrada
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY ./docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Cambiar propietario del directorio
@@ -54,7 +55,7 @@ RUN chown -R www:www /var/www
 # Exponer puerto
 EXPOSE 9000
 
-USER www
+USER root
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["php-fpm"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

@@ -1,0 +1,198 @@
+version: '3.8'
+
+services:
+  # Servicio principal de Laravel con optimizaciones
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    container_name: visitas-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ../backend:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+      - ./docker/php/php-fpm.conf:/usr/local/etc/php-fpm.d/www.conf
+      - ./docker/php/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
+      - app_logs:/var/log
+    networks:
+      - visitas-network
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8080
+      - DB_CONNECTION=mysql
+      - DB_HOST=127.0.0.1
+      - DB_PORT=3306
+      - DB_DATABASE=visitantes
+      - DB_USERNAME=visitante
+      - DB_PASSWORD=visitante1
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - JWT_SECRET=37ef6095db28c65e6be2db24fc10000adf0e3b64136255fc3adb92be48c0c30f5c6412c8d42bca121b6b558da4ebbcd94863eca96e0b5610357d8f20f7df4922
+    healthcheck:
+      test: ["CMD", "php", "artisan", "route:list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Servidor web Nginx optimizado
+  nginx:
+    image: nginx:alpine
+    container_name: visitas-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ../backend:/var/www
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+      - nginx_logs:/var/log/nginx
+    networks:
+      - visitas-network
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Base de datos MySQL optimizada con healthcheck
+  db:
+    image: mysql:8.0
+    container_name: visitas-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: visitantes
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_PASSWORD: visitante1
+      MYSQL_USER: visitante
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'no'
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    networks:
+      - visitas-network
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-psecret"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis para caché y colas con healthcheck
+  redis:
+    image: redis:7-alpine
+    container_name: visitas-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - visitas-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Laravel Horizon para gestión de colas
+  horizon:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: visitas-horizon
+    restart: unless-stopped
+    working_dir: /var/www
+    command: php artisan horizon
+    volumes:
+      - ../backend:/var/www
+      - app_logs:/var/log
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - visitas-network
+    environment:
+      - APP_ENV=local
+      - DB_CONNECTION=mysql
+      - DB_HOST=127.0.0.1
+      - DB_PORT=3306
+      - DB_DATABASE=visitantes
+      - DB_USERNAME=visitante
+      - DB_PASSWORD=visitante1
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+  # Frontend con Node.js y hot reload
+  frontend:
+    image: node:18-alpine
+    container_name: visitas-frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+      - "5173:5173"
+    command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host 0.0.0.0 --port 5173"
+    networks:
+      - visitas-network
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Mailhog para pruebas de correo
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: visitas-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - visitas-network
+
+volumes:
+  db_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  visitas-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/16

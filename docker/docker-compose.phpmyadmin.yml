@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: visitas_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: 127.0.0.1
+      PMA_PORT: 3306
+      PMA_USER: visitante
+      PMA_PASSWORD: visitante1
+      PMA_ARBITRARY: 1
+      UPLOAD_LIMIT: 100M
+    depends_on:
+      - db
+    networks:
+      - visitas-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

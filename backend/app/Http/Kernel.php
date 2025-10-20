@@ -70,5 +70,10 @@ class Kernel extends HttpKernel
         'security' => \App\Http\Middleware\SecurityHeaders::class,
         'sanitize' => \App\Http\Middleware\SanitizeInput::class,
         'rate.limit' => \App\Http\Middleware\RateLimitApi::class,
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
+        'permission' => \App\Http\Middleware\PermissionMiddleware::class,
+        'rate.role' => \App\Http\Middleware\RateLimitByRole::class,
+        // 'auth.token' => \App\Http\Middleware\AuthenticateWithToken::class,
+        'jwt.auth' => \App\Http\Middleware\JwtMiddleware::class,
     ];
 }

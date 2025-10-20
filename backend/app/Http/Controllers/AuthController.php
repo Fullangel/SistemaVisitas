@@ -18,7 +18,7 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'username' => 'required|string|max:255|unique:users',
             'password' => 'required|string|min:6|confirmed',
-            'role_id' => 'required|exists:roles,id',
+            'role_id' => 'sometimes|exists:roles,id',
         ]);
 
         $user = User::create([
@@ -27,10 +27,11 @@ class AuthController extends Controller
             'email' => $request->email,
             'username' => $request->username,
             'password' => Hash::make($request->password),
-            'role_id' => $request->role_id,
+            'role_id' => $request->role_id ?? 2, // Rol por defecto (usuario normal)
             'status' => 1,
         ]);
 
+        // Generar token JWT
         $token = JWTAuth::fromUser($user);
 
         return response()->json([
@@ -43,42 +44,62 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'username' => 'required|string',
+            'login' => 'required|string',
             'password' => 'required|string',
         ]);
 
-        $credentials = $request->only('username', 'password');
+        // Intentar autenticar con email o username
+        $loginField = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+        $credentials = [
+            $loginField => $request->login,
+            'password' => $request->password,
+        ];
 
-        if (!$token = Auth::attempt($credentials)) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+        if (!$token = JWTAuth::attempt($credentials)) {
+            return response()->json(['success' => false, 'message' => 'Credenciales inválidas'], 401);
         }
 
-        return $this->respondWithToken($token);
+        $user = JWTAuth::user();
+        return $this->respondWithToken($token, $user);
     }
 
-    public function logout()
+    public function logout(Request $request)
     {
-        Auth::logout();
-        return response()->json(['message' => 'Successfully logged out']);
+        try {
+            JWTAuth::invalidate(JWTAuth::getToken());
+            return response()->json(['message' => 'Successfully logged out']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to logout'], 500);
+        }
     }
 
-    public function refresh()
+    public function refresh(Request $request)
     {
-        return $this->respondWithToken(Auth::refresh());
+        try {
+            $token = JWTAuth::parseToken()->refresh();
+            $user = JWTAuth::setToken($token)->toUser();
+            return $this->respondWithToken($token, $user);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to refresh token'], 401);
+        }
     }
 
-    public function me()
+    public function me(Request $request)
     {
-        return response()->json(Auth::user());
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            return response()->json($user);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to get user'], 401);
+        }
     }
 
-    protected function respondWithToken($token)
+    protected function respondWithToken($token, $user = null)
     {
         return response()->json([
             'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => Auth::factory()->getTTL() * 60,
-            'user' => Auth::user()
+            'token_type' => 'Bearer',
+            'user' => $user
         ]);
     }
 }

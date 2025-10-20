@@ -27,25 +27,25 @@ class UsersTableSeeder extends Seeder
             'status' => 'active'
         ]);
 
-        // Usuario de seguridad
+        // Usuario Supervisor
         User::create([
-            'first_name' => 'Usuario',
-            'last_name' => 'Seguridad',
-            'username' => 'seguridad',
-            'email' => 'seguridad@visitas.com',
+            'first_name' => 'Carlos',
+            'last_name' => 'Supervisor',
+            'username' => 'supervisor',
+            'email' => 'supervisor@visitas.com',
             'password' => bcrypt('password123'),
-            'role_id' => 2, // Asumiendo que el rol 2 es seguridad
+            'role_id' => 2, // Asumiendo que el rol 2 es supervisor
             'status' => 'active'
         ]);
 
-        // Usuario regular
+        // Usuario Recepcion
         User::create([
-            'first_name' => 'Usuario',
-            'last_name' => 'Regular',
-            'username' => 'usuario',
-            'email' => 'usuario@visitas.com',
+            'first_name' => 'Ana',
+            'last_name' => 'Recepcion',
+            'username' => 'recepcion',
+            'email' => 'recepcion@visitas.com',
             'password' => bcrypt('password123'),
-            'role_id' => 3, // Asumiendo que el rol 3 es usuario regular
+            'role_id' => 3, // Asumiendo que el rol 3 es recepcion
             'status' => 'active'
         ]);
     }
