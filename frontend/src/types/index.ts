@@ -1,9 +1,22 @@
 // Tipos principales del sistema
+export interface Rol {
+  id: number
+  name: 'admin' | 'supervisor' | 'recepcion' | 'employee' | 'visitor'
+  description: string
+  permissions: string[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface User {
   id: number
-  name: string
+  username: string
   email: string
-  role: 'admin' | 'user' | 'supervisor'
+  first_name: string
+  last_name: string
+  role: Rol
+  status: number
   permissions: string[]
   avatar?: string
   created_at: string

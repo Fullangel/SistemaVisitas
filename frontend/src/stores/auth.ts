@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import api from '@/lib/axios'
 import type { User } from '@/types'
 
 interface AuthState {
@@ -18,7 +19,7 @@ interface AuthState {
   setToken: (token: string) => void
   removeToken: () => void
   setUser: (user: User) => void
-  login: (credentials: { email: string; password: string }) => Promise<{ success: boolean; error?: string }>
+  login: (login: string, password: string) => Promise<{ success: boolean; error?: string; user?: User; token?: string }>
   logout: () => Promise<void>
   fetchUser: () => Promise<void>
   hasPermission: (permission: string) => boolean
@@ -42,7 +43,7 @@ export const useAuthStore = create<AuthState>()(
       
       isAdmin: () => {
         const { user } = get()
-        return user?.role === 'admin'
+        return user?.role?.name === 'admin' || user?.role === 'admin'
       },
       
       userPermissions: () => {
@@ -65,36 +66,49 @@ export const useAuthStore = create<AuthState>()(
         set({ user })
       },
       
-      login: async (credentials: { login: string; password: string }) => {
+      login: async (login: string, password: string) => {
         set({ isLoading: true, error: null })
         
         try {
-          const response = await fetch('/api/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(credentials),
-          })
+          const response = await api.post('/login', { login, password })
           
-          if (!response.ok) {
-            throw new Error('Credenciales inválidas')
+          const data = response.data
+          
+          // Guardar token y usuario - ajustar a la estructura real del backend
+          const token = data.token || data.data?.access_token
+          let user = data.user || data.data?.user
+          
+          if (!token) {
+            throw new Error('No se recibió token de autenticación')
           }
           
-          const data = await response.json()
+          // Convertir el rol de string a objeto si es necesario
+          if (user && typeof user.role === 'string') {
+            user = {
+              ...user,
+              role: {
+                id: 1, // ID por defecto
+                name: user.role,
+                description: '',
+                permissions: [],
+                is_active: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            }
+          }
           
-          // Guardar token y usuario
-          localStorage.setItem('token', data.token)
+          localStorage.setItem('token', token)
           set({ 
-            token: data.token, 
-            user: data.user, 
+            token: token, 
+            user: user, 
             isLoading: false, 
             error: null 
           })
           
-          return { success: true }
-        } catch (err) {
-          const error = err instanceof Error ? err.message : 'Error al iniciar sesión'
+          return { success: true, user: user, token: token }
+        } catch (err: any) {
+          const error = err.response?.data?.message || err.message || 'Error al iniciar sesión'
           set({ isLoading: false, error })
           return { success: false, error }
         }
@@ -104,19 +118,9 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null })
         
         try {
-          const response = await fetch('/api/register', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(userData),
-          })
+          const response = await api.post('/register', userData)
           
-          if (!response.ok) {
-            throw new Error('Error al registrar usuario')
-          }
-          
-          const data = await response.json()
+          const data = response.data
           
           // Guardar token y usuario
           localStorage.setItem('token', data.token)
@@ -128,8 +132,8 @@ export const useAuthStore = create<AuthState>()(
           })
           
           return { success: true }
-        } catch (err) {
-          const error = err instanceof Error ? err.message : 'Error al registrar usuario'
+        } catch (err: any) {
+          const error = err.response?.data?.message || err.message || 'Error al registrar usuario'
           set({ isLoading: false, error })
           return { success: false, error }
         }
@@ -141,16 +145,14 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { token } = get()
           if (token) {
-            // Llamar a la API para cerrar sesión
-            await fetch('/api/logout', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
+            // Llamar a la API para cerrar sesión, pero no fallar si hay error
+            await api.post('/logout').catch(err => {
+              // Silenciosamente manejar el error, no es crítico
+              console.warn('Logout API call failed (token might be invalid):', err)
             })
           }
         } catch (err) {
-          console.error('Error al cerrar sesión:', err)
+          console.warn('Error during logout process:', err)
         } finally {
           // Limpiar estado independientemente del resultado de la API
           localStorage.removeItem('token')
@@ -169,17 +171,9 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true })
         
         try {
-          const response = await fetch('/api/user', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          })
+          const response = await api.get('/user')
           
-          if (!response.ok) {
-            throw new Error('Usuario no autenticado')
-          }
-          
-          const data = await response.json()
+          const data = response.data
           set({ user: data.user, isLoading: false })
         } catch (err) {
           console.error('Error al obtener usuario:', err)

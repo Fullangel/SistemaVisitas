@@ -25,15 +25,15 @@ import { useAuthStore } from "@/stores/auth"
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login, isLoading, error } = useAuthStore()
+  const { login, isLoading, error, clearError } = useAuthStore()
   
   // Estados para mejorar la UX
   const [showPassword, setShowPassword] = useState(false)
   const [loginAttempts, setLoginAttempts] = useState(0)
   const [isBlocked, setIsBlocked] = useState(false)
   const [blockTimeRemaining, setBlockTimeRemaining] = useState(0)
-  const [formData, setFormData] = useState({ email: '', password: '' })
-  const [validationErrors, setValidationErrors] = useState<{email?: string, password?: string}>({})
+  const [formData, setFormData] = useState({ login: '', password: '' }) // Cambiar de 'email' a 'login' para aceptar email o username
+  const [validationErrors, setValidationErrors] = useState<{login?: string, password?: string}>({}) // Cambiar de 'email' a 'login'
 
   // Efecto para manejar el bloqueo temporal
   useEffect(() => {
@@ -54,12 +54,14 @@ export default function LoginPage() {
 
   // Validación de formulario
   const validateForm = () => {
-    const errors: {email?: string, password?: string} = {}
+    const errors: {login?: string, password?: string} = {}
     
-    if (!formData.email) {
-      errors.email = 'El correo electrónico es requerido'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'Formato de correo electrónico inválido'
+    if (!formData.login) {
+      errors.login = 'El correo electrónico o usuario es requerido'
+    } else if (formData.login.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.login)) {
+      errors.login = 'El formato del correo electrónico no es válido'
+    } else if (!formData.login.includes('@') && formData.login.length < 3) {
+      errors.login = 'El usuario debe tener al menos 3 caracteres'
     }
     
     if (!formData.password) {
@@ -72,11 +74,15 @@ export default function LoginPage() {
     return Object.keys(errors).length === 0
   }
 
-  const handleInputChange = (field: 'email' | 'password', value: string) => {
+  const handleInputChange = (field: 'login' | 'password', value: string) => { // Cambiar de 'email' a 'login'
     setFormData(prev => ({ ...prev, [field]: value }))
     // Limpiar errores de validación cuando el usuario empiece a escribir
     if (validationErrors[field]) {
       setValidationErrors(prev => ({ ...prev, [field]: undefined }))
+    }
+    // Limpiar el error general del store cuando el usuario empiece a escribir
+    if (error) {
+      clearError()
     }
   }
 
@@ -87,13 +93,40 @@ export default function LoginPage() {
     
     if (!validateForm()) return
     
-    // Usar los datos del estado en lugar del FormData
-    const result = await login({ login: formData.email, password: formData.password })
-    
-    if (result.success) {
-      setLoginAttempts(0)
-      navigate("/dashboard")
-    } else {
+    try {
+      // El backend espera 'login' (puede ser email o username) y 'password'
+      const response = await login(formData.login, formData.password)
+      
+      if (response.success && response.user) {
+        setLoginAttempts(0)
+        
+        // Redirigir según el rol del usuario
+        if (response.user.role?.name === 'admin') {
+          navigate('/admin/dashboard')
+        } else if (response.user.role?.name === 'supervisor') {
+          navigate('/supervisor/dashboard')
+        } else if (response.user.role?.name === 'recepcion' || response.user.role?.name === 'reception') {
+          navigate('/reception/dashboard')
+        } else if (response.user.role?.name === 'employee') {
+          navigate('/employee/dashboard')
+        } else if (response.user.role?.name === 'visitor') {
+          navigate('/dashboard')
+        } else {
+          // Fallback al dashboard general
+          navigate('/dashboard')
+        }
+      } else {
+        // Login fallido pero sin excepción
+        const newAttempts = loginAttempts + 1
+        setLoginAttempts(newAttempts)
+        
+        // Bloquear después de 3 intentos fallidos
+        if (newAttempts >= 3) {
+          setIsBlocked(true)
+          setBlockTimeRemaining(300) // 5 minutos
+        }
+      }
+    } catch (error) {
       const newAttempts = loginAttempts + 1
       setLoginAttempts(newAttempts)
       
@@ -102,6 +135,7 @@ export default function LoginPage() {
         setIsBlocked(true)
         setBlockTimeRemaining(300) // 5 minutos
       }
+      // El error ya está en el store gracias al método login, no necesitamos hacer nada más
     }
   }
 
@@ -181,30 +215,28 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-700 dark:text-blue-100 font-medium">
-                Correo Electrónico Institucional
+              <Label htmlFor="login" className="text-slate-700 dark:text-blue-100 font-medium">
+                Correo Electrónico o Usuario
               </Label>
               <div className="relative">
                 <PersonRegular className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-blue-600 dark:text-blue-400" />
                 <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="usuario@seniat.gob.ve"
+                  id="login"
+                  name="login"
+                  type="text"
+                  value={formData.login}
+                  onChange={(e) => handleInputChange('login', e.target.value)}
+                  placeholder="usuario@seniat.gob.ve o usuario"
                   className={`border-slate-300 bg-white/80 pl-10 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/20 dark:border-blue-900/50 dark:bg-slate-950/50 dark:text-white dark:placeholder:text-blue-300/50 ${
-                    validationErrors.email ? 'border-red-400 focus:border-red-500' : ''
+                    validationErrors.login ? 'border-red-400 focus:border-red-500' : ''
                   }`}
                   disabled={isBlocked}
                   required
+                  autoComplete="username"
                 />
               </div>
-              {validationErrors.email && (
-                <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
-                  <InfoRegular className="h-4 w-4" />
-                  {validationErrors.email}
-                </p>
+              {validationErrors.login && (
+                <p className="text-sm text-red-600 dark:text-red-400">{validationErrors.login}</p>
               )}
             </div>
 
@@ -226,6 +258,7 @@ export default function LoginPage() {
                   }`}
                   disabled={isBlocked}
                   required
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"

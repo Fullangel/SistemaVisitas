@@ -187,7 +187,7 @@ const VisitasIndex: React.FC = () => {
                       <div className="text-right">
                         <p className="text-sm text-gray-900 flex items-center">
                           <CalendarIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                          {visita.fcha}
+                          {visita.fecha}
                         </p>
                         <p className="text-sm text-gray-500">
                           {visita.hora_entrada} - {visita.hora_salida || 'En curso'}

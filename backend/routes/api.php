@@ -5,12 +5,14 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\TwoFactorController;
 use App\Http\Controllers\VisitController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\HeadquarterController;
 use App\Http\Controllers\DesignationController;
 use App\Http\Controllers\RegionController;
+use App\Http\Controllers\AuditController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,18 +29,33 @@ use App\Http\Controllers\RegionController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// Rutas de verificación de dos factores (DESACTIVADAS PARA DESARROLLO)
+// Route::post('/verify-two-factor', [AuthController::class, 'verifyTwoFactor']);
+
 // Rutas protegidas de autenticación
 Route::middleware(['jwt.auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
     Route::get('/user', [AuthController::class, 'profile']);
+    
+    // Rutas de gestión de 2FA (DESACTIVADAS PARA DESARROLLO)
+    // Route::prefix('two-factor')->group(function () {
+    //     Route::get('/status', [TwoFactorController::class, 'status']);
+    //     Route::post('/enable-app', [TwoFactorController::class, 'enableWithApp']);
+    //     Route::post('/confirm', [TwoFactorController::class, 'confirm']);
+    //     Route::post('/disable', [TwoFactorController::class, 'disable']);
+    //     Route::post('/generate-code', [TwoFactorController::class, 'generateCode']);
+    //     Route::get('/trusted-devices', [TwoFactorController::class, 'trustedDevices']);
+    //     Route::delete('/trusted-devices/{deviceId}', [TwoFactorController::class, 'revokeDevice']);
+    //     Route::post('/regenerate-recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes']);
+    // });
 });
 
 // Rutas protegidas con autenticación JWT
 Route::middleware(['jwt.auth', 'rate.role'])->group(function () {
     
     // Rutas de administrador (acceso total)
-    Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['jwt.role:admin'])->group(function () {
         // Gestión de empleados (solo admin)
         Route::prefix('admin')->group(function () {
             // Gestión de usuarios (solo admin)
@@ -91,7 +108,7 @@ Route::middleware(['jwt.auth', 'rate.role'])->group(function () {
         });
         
         // Rutas de supervisor (lectura y actualización)
-        Route::middleware(['role:admin,supervisor'])->group(function () {
+        Route::middleware(['jwt.role:admin,supervisor'])->group(function () {
             Route::get('/employees', [EmployeeController::class, 'index']);
             Route::get('/employees/{id}', [EmployeeController::class, 'show']);
             Route::put('/employees/{id}', [EmployeeController::class, 'update']);
@@ -110,7 +127,7 @@ Route::middleware(['jwt.auth', 'rate.role'])->group(function () {
         });
     
         // Rutas de recepción (solo visitas)
-        Route::middleware(['role:admin,supervisor,recepcion'])->group(function () {
+        Route::middleware(['jwt.role:admin,supervisor,recepcion'])->group(function () {
             Route::get('/visits', [VisitController::class, 'index']);
             Route::post('/visits', [VisitController::class, 'store']);
             Route::get('/visits/{id}', [VisitController::class, 'show']);
@@ -119,9 +136,12 @@ Route::middleware(['jwt.auth', 'rate.role'])->group(function () {
         });
     
         // Rutas de empleado (solo lectura de visitas)
-        Route::middleware(['role:admin,supervisor,recepcion,employee'])->group(function () {
+        Route::middleware(['jwt.role:admin,supervisor,recepcion,employee'])->group(function () {
             Route::get('/visits', [VisitController::class, 'index']);
             Route::get('/visits/{id}', [VisitController::class, 'show']);
         });
     });
 });
+
+// Incluir rutas de auditoría y monitoreo
+require __DIR__.'/api_audit.php';

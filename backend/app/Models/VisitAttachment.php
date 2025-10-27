@@ -17,10 +17,12 @@ class VisitAttachment extends Model
         'file_size',
         'mime_type',
         'uploaded_by',
+        'upload_date',
     ];
 
     protected $casts = [
         'file_size' => 'integer',
+        'upload_date' => 'date',
     ];
 
     public function visit()

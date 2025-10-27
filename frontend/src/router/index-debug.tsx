@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import type { RouteObject } from 'react-router-dom'
 
 // Layouts
@@ -65,7 +65,7 @@ const routes: RouteObject[] = [
     path: '/dashboard',
     element: (
       <AuthGuard>
-        <DefaultLayout>{null}</DefaultLayout>
+        <DefaultLayout />
       </AuthGuard>
     ),
     children: [
@@ -83,7 +83,7 @@ const routes: RouteObject[] = [
     path: '/visitas',
     element: (
       <AuthGuard>
-        <DefaultLayout>{null}</DefaultLayout>
+        <DefaultLayout />
       </AuthGuard>
     ),
     children: [
@@ -110,7 +110,7 @@ const routes: RouteObject[] = [
     path: '/reportes',
     element: (
       <AuthGuard>
-        <DefaultLayout>{null}</DefaultLayout>
+        <DefaultLayout />
       </AuthGuard>
     ),
     children: [
@@ -128,7 +128,7 @@ const routes: RouteObject[] = [
     path: '/admin',
     element: (
       <AdminGuard>
-        <DefaultLayout>{null}</DefaultLayout>
+        <DefaultLayout />
       </AdminGuard>
     ),
     children: [
@@ -156,9 +156,6 @@ console.log("Router: Rutas configuradas:", routes.map(r => r.path))
 
 export const router = createBrowserRouter(routes, {
   basename: import.meta.env.BASE_URL,
-  future: {
-    v7_startTransition: true,
-  },
 })
 
 export { RouterProvider }

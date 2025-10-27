@@ -130,6 +130,36 @@ return [
         'emergency' => [
             'path' => storage_path('logs/emergency.log'),
         ],
+
+        // Canal de auditoría personalizado
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit.log'),
+            'level' => 'info',
+            'days' => 90, // Mantener logs de auditoría por 90 días
+            'replace_placeholders' => true,
+            'tap' => [SensitiveDataProcessor::class],
+        ],
+
+        // Canal de seguridad
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => 'warning',
+            'days' => 60, // Mantener logs de seguridad por 60 días
+            'replace_placeholders' => true,
+            'tap' => [SensitiveDataProcessor::class],
+        ],
+
+        // Canal de visitas
+        'visits' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/visits.log'),
+            'level' => 'info',
+            'days' => 30, // Mantener logs de visitas por 30 días
+            'replace_placeholders' => true,
+            'tap' => [SensitiveDataProcessor::class],
+        ],
     ],
 
 ];

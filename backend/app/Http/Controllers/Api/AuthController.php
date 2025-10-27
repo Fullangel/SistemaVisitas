@@ -4,15 +4,26 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuthService;
+use App\Services\TwoFactorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 class AuthController extends Controller
 {
+    protected AuthService $authService;
+    protected TwoFactorService $twoFactorService;
+
+    public function __construct(AuthService $authService, TwoFactorService $twoFactorService)
+    {
+        $this->authService = $authService;
+        $this->twoFactorService = $twoFactorService;
+    }
     /**
      * Registro de nuevo usuario
      */
@@ -70,7 +81,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Login de usuario
+     * Login de usuario con soporte para 2FA
      */
     public function login(Request $request)
     {
@@ -78,62 +89,44 @@ class AuthController extends Controller
             $request->validate([
                 'login' => 'required|string|max:191', // Puede ser username o email
                 'password' => 'required|string|min:8|max:255',
+                'remember' => 'boolean',
             ]);
 
-            // Determinar si es email o username
-            $loginField = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
-            
-            // Verificar si el usuario existe y está activo
-            $user = User::where($loginField, $request->login)->first();
-            
-            if (!$user) {
+            $result = $this->authService->authenticate(
+                $request->login,
+                $request->password,
+                $request->boolean('remember', false)
+            );
+
+            if (!$result['success']) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Usuario no encontrado',
-                    'error' => 'User not found'
-                ], 404);
-            }
-
-            // Verificar que el usuario esté activo
-            if ($user->status !== 'active') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Usuario inactivo',
-                    'error' => 'User inactive'
-                ], 403);
-            }
-
-            $credentials = [
-                $loginField => $request->login,
-                'password' => $request->password
-            ];
-
-            // Intentar autenticar con JWT
-            if (!$token = JWTAuth::attempt($credentials)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Credenciales inválidas',
-                    'error' => 'Invalid credentials'
+                    'message' => $result['message'],
+                    'locked_until' => $result['locked_until'] ?? null,
+                    'remaining_attempts' => $result['remaining_attempts'] ?? null,
                 ], 401);
             }
 
-            // Actualizar último login
-            $user->update(['last_login_at' => now()]);
-
-            // Cargar relaciones del usuario
-            $user->load(['role', 'employee']);
+            // Si requiere 2FA, no enviar token completo aún
+            // DESACTIVADO PARA DESARROLLO - SIEMPRE RETORNA FALSE
+            if ($result['requires_2fa'] && config('app.enable_2fa', false)) {
+                return response()->json([
+                    'success' => true,
+                    'requires_2fa' => true,
+                    'temp_token' => $result['temp_token'],
+                    'user_id' => $result['user_id'],
+                    'two_factor_method' => $result['two_factor_method'],
+                    'message' => $result['message'],
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Login exitoso',
-                'data' => [
-                    'user' => $user,
-                    'access_token' => $token,
-                    'token_type' => 'bearer',
-                    'expires_in' => JWTAuth::factory()->getTTL() * 60,
-                    'issued_at' => now()->toISOString(),
-                    'expires_at' => now()->addMinutes(JWTAuth::factory()->getTTL())->toISOString()
-                ]
+                'token' => $result['token'],
+                'token_type' => $result['token_type'],
+                'expires_in' => $result['expires_in'],
+                'user' => $result['user'],
+                'message' => $result['message'],
             ]);
 
         } catch (ValidationException $e) {
@@ -153,26 +146,69 @@ class AuthController extends Controller
     }
 
     /**
+     * Verificar código 2FA
+     */
+    public function verifyTwoFactor(Request $request)
+    {
+        Log::info('verifyTwoFactor called', ['request_data' => $request->all()]);
+        
+        $validator = validator($request->all(), [
+            'temp_token' => 'required|string',
+            'code' => 'required|string',
+            'trust_device' => 'boolean',
+        ]);
+
+        if ($validator->fails()) {
+            Log::error('Validation failed', ['errors' => $validator->errors()->toArray()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos de entrada inválidos',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        Log::info('Calling authService->verifyTwoFactor', [
+            'temp_token' => $request->temp_token,
+            'code' => $request->code,
+            'trust_device' => $request->boolean('trust_device', false)
+        ]);
+
+        $result = $this->authService->verifyTwoFactor(
+            $request->temp_token,
+            $request->code,
+            $request->boolean('trust_device', false)
+        );
+
+        Log::info('authService->verifyTwoFactor result', ['result' => $result]);
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], 401);
+        }
+
+        return response()->json([
+            'success' => true,
+            'token' => $result['token'],
+            'token_type' => $result['token_type'],
+            'expires_in' => $result['expires_in'],
+            'user' => $result['user'],
+            'message' => $result['message'],
+        ]);
+    }
+
+    /**
      * Logout de usuario
      */
     public function logout(Request $request)
     {
-        try {
-            // Invalidar el token JWT
-            JWTAuth::invalidate(JWTAuth::getToken());
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Logout exitoso'
-            ]);
-
-        } catch (JWTException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al cerrar sesión',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        $this->authService->logout();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Sesión cerrada exitosamente',
+        ]);
     }
 
     /**
@@ -181,24 +217,19 @@ class AuthController extends Controller
     public function refreshToken(Request $request)
     {
         try {
-            // Refrescar el token JWT
-            $token = JWTAuth::refresh(JWTAuth::getToken());
+            $result = $this->authService->refreshToken();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Token refrescado exitosamente',
-                'data' => [
-                    'token' => $token,
-                    'token_type' => 'Bearer'
-                ]
+                'data' => $result,
             ]);
 
-        } catch (JWTException $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al refrescar token',
-                'error' => $e->getMessage()
-            ], 500);
+                'error' => $e->getMessage(),
+            ], 401);
         }
     }
 

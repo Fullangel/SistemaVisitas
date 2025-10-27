@@ -1,4 +1,4 @@
-import type React from "react"
+import React from "react"
 import { Outlet } from "react-router-dom"
 import "@/main.css"
 import { ThemeProvider } from "@/components/theme-provider"

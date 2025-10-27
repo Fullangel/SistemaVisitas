@@ -27,13 +27,12 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   }
 
   // Verificar si el rol del usuario está en los roles permitidos
-  const userRole = user.role.toLowerCase()
+  const userRole = user.role?.name?.toLowerCase() || ''
   const normalizedAllowedRoles = allowedRoles.map(role => role.toLowerCase())
   
   if (!normalizedAllowedRoles.includes(userRole)) {
-    // Si no tiene el rol permitido, redirigir al dashboard correspondiente a su rol
-    const roleDashboard = `/dashboard/${userRole}`
-    return <Navigate to={roleDashboard} replace />
+    // Si no tiene el rol permitido, redirigir al dashboard general
+    return <Navigate to={redirectTo} replace />
   }
 
   return <>{children}</>

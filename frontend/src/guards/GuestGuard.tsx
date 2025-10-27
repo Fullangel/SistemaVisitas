@@ -11,7 +11,7 @@ export const GuestGuard: React.FC<GuestGuardProps> = ({ children }) => {
   const location = useLocation()
 
   // Verificar más detalladamente el estado de autenticación
-  const isReallyAuthenticated = isAuthenticated && token && user
+  const isReallyAuthenticated = isAuthenticated() && token && user
 
   if (isReallyAuthenticated) {
     const from = (location.state as any)?.from?.pathname || '/dashboard'

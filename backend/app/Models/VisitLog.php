@@ -16,6 +16,11 @@ class VisitLog extends Model
         'status_to',
         'user_id',
         'notes',
+        'log_date',
+    ];
+
+    protected $casts = [
+        'log_date' => 'date',
     ];
 
     public function visit()

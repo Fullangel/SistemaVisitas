@@ -14,7 +14,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return response()->json([
+        'service' => 'Sistema Nacional de Visitas - API',
+        'version' => '1.0.0',
+        'status' => 'operational',
+        'documentation' => '/api/documentation',
+        'health_check' => '/health',
+        'timestamp' => now()->toIso8601String()
+    ]);
 });
 
 Route::get('/health', function () {

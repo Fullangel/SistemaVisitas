@@ -14,8 +14,8 @@ class RoleController extends Controller
     public function index(Request $request)
     {
         try {
-            $roles = Role::select('id', 'name', 'display_name', 'description')
-                        ->where('status', 'active')
+            $roles = Role::select('id', 'name', 'description', 'permissions')
+                        ->withCount('users')
                         ->orderBy('name')
                         ->get();
             

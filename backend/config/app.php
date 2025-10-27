@@ -174,6 +174,8 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
+        App\Providers\RepositoryServiceProvider::class,
+        App\Providers\ServiceServiceProvider::class,
 
     ],
 
@@ -231,5 +233,18 @@ return [
         'View' => Illuminate\Support\Facades\View::class,
 
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Configuración de seguridad y 2FA
+    |--------------------------------------------------------------------------
+    |
+    | Opciones de configuración para la autenticación de dos factores y
+    | otras características de seguridad del sistema.
+    |
+    */
+
+    'enable_2fa' => env('ENABLE_2FA', true),
+    'require_2fa' => env('REQUIRE_2FA', false),
 
 ];

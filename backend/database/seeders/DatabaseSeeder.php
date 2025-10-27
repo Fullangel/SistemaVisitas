@@ -24,6 +24,9 @@ class DatabaseSeeder extends Seeder
             VisitLogsTableSeeder::class,
             VisitAttachmentsTableSeeder::class,
             NotificationsTableSeeder::class,
+            TwoFactorTestUserSeeder::class,
+            AuditPermissionsSeeder::class,
+            AuditLogsSeeder::class,
         ]);
     }
 }

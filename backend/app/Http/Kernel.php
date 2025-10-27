@@ -23,6 +23,7 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
         \App\Http\Middleware\SecurityHeaders::class,
         \App\Http\Middleware\SanitizeInput::class,
+        \App\Http\Middleware\LogRequests::class,
     ];
 
     /**
@@ -35,6 +36,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
+            \App\Http\Middleware\SessionSecurity::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
@@ -75,5 +77,6 @@ class Kernel extends HttpKernel
         'rate.role' => \App\Http\Middleware\RateLimitByRole::class,
         // 'auth.token' => \App\Http\Middleware\AuthenticateWithToken::class,
         'jwt.auth' => \App\Http\Middleware\JwtMiddleware::class,
+        'jwt.role' => \App\Http\Middleware\JwtRoleMiddleware::class,
     ];
 }

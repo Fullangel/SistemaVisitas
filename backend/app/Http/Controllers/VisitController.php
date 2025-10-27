@@ -12,7 +12,7 @@ class VisitController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Visit::with(['employee', 'department', 'headquarter', 'creator', 'approver']);
+        $query = Visit::withCommonRelations()->withOptionalRelations();
 
         // Filtros
         if ($request->has('status')) {
@@ -130,7 +130,10 @@ class VisitController extends Controller
 
     public function show($id)
     {
-        $visit = Visit::with(['employee', 'department', 'headquarter', 'creator', 'approver', 'logs.user', 'attachments'])
+        $visit = Visit::withCommonRelations()
+                     ->with(['logs.user' => function($q) {
+                         $q->select('id', 'first_name', 'last_name');
+                     }, 'attachments'])
                      ->findOrFail($id);
 
         return response()->json($visit);

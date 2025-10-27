@@ -1,5 +1,6 @@
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import type { RouteObject } from 'react-router-dom'
+import ErrorPage from '@/pages/ErrorPage'
 
 // Layouts
 import DefaultLayout from '@/layouts/DefaultLayout'
@@ -18,10 +19,11 @@ import VisitasCreate from '@/pages/visitas/Create'
 import Reports from '@/pages/reports'
 import Admin from '@/pages/admin'
 
-// Dashboards por roles
-import AdminDashboard from '@/pages/dashboard/admin'
-import SupervisorDashboard from '@/pages/dashboard/supervisor'
-import ReceptionDashboard from '@/pages/dashboard/reception'
+// Dashboards por roles - Nueva estructura
+import AdminDashboard from '@/pages/admin/dashboard'
+import SupervisorDashboard from '@/pages/supervisor/dashboard'
+import ReceptionDashboard from '@/pages/reception/dashboard'
+import EmployeeDashboard from '@/pages/employee/dashboard'
 
 // Guards
 import { AuthGuard } from '@/guards/AuthGuard'
@@ -33,6 +35,7 @@ const routes: RouteObject[] = [
   {
     path: '/',
     element: <Home />,
+    errorElement: <ErrorPage />,
     handle: {
       title: 'Inicio',
     },
@@ -44,6 +47,7 @@ const routes: RouteObject[] = [
         <Login />
       </GuestGuard>
     ),
+    errorElement: <ErrorPage />,
     handle: {
       title: 'Iniciar Sesión',
     },
@@ -55,10 +59,12 @@ const routes: RouteObject[] = [
         <AuthLayout />
       </GuestGuard>
     ),
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,
         element: <Register />,
+        errorElement: <ErrorPage />,
         handle: {
           title: 'Registrarse',
         },
@@ -72,10 +78,12 @@ const routes: RouteObject[] = [
         <DefaultLayout />
       </AuthGuard>
     ),
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,
         element: <Dashboard />,
+        errorElement: <ErrorPage />,
         handle: {
           title: 'Panel de Control',
           breadcrumb: 'Dashboard',
@@ -83,18 +91,20 @@ const routes: RouteObject[] = [
       },
     ],
   },
-  // Dashboards por roles
+  // Dashboards por roles - Nueva estructura más lógica
   {
-    path: '/dashboard/admin',
+    path: '/admin',
     element: (
       <RoleGuard allowedRoles={['admin']}>
         <DefaultLayout />
       </RoleGuard>
     ),
+    errorElement: <ErrorPage />,
     children: [
       {
-        index: true,
+        path: 'dashboard',
         element: <AdminDashboard />,
+        errorElement: <ErrorPage />,
         handle: {
           title: 'Panel de Administración',
           breadcrumb: 'Admin Dashboard',
@@ -103,16 +113,18 @@ const routes: RouteObject[] = [
     ],
   },
   {
-    path: '/dashboard/supervisor',
+    path: '/supervisor',
     element: (
       <RoleGuard allowedRoles={['supervisor']}>
         <DefaultLayout />
       </RoleGuard>
     ),
+    errorElement: <ErrorPage />,
     children: [
       {
-        index: true,
+        path: 'dashboard',
         element: <SupervisorDashboard />,
+        errorElement: <ErrorPage />,
         handle: {
           title: 'Panel de Supervisión',
           breadcrumb: 'Supervisor Dashboard',
@@ -121,19 +133,41 @@ const routes: RouteObject[] = [
     ],
   },
   {
-    path: '/dashboard/reception',
+    path: '/reception',
     element: (
       <RoleGuard allowedRoles={['recepcion', 'reception']}>
         <DefaultLayout />
       </RoleGuard>
     ),
+    errorElement: <ErrorPage />,
     children: [
       {
-        index: true,
+        path: 'dashboard',
         element: <ReceptionDashboard />,
+        errorElement: <ErrorPage />,
         handle: {
           title: 'Panel de Recepción',
           breadcrumb: 'Reception Dashboard',
+        },
+      },
+    ],
+  },
+  {
+    path: '/employee',
+    element: (
+      <RoleGuard allowedRoles={['employee']}>
+        <DefaultLayout />
+      </RoleGuard>
+    ),
+    errorElement: <ErrorPage />,
+    children: [
+      {
+        path: 'dashboard',
+        element: <EmployeeDashboard />,
+        errorElement: <ErrorPage />,
+        handle: {
+          title: 'Panel de Empleado',
+          breadcrumb: 'Employee Dashboard',
         },
       },
     ],
@@ -145,10 +179,12 @@ const routes: RouteObject[] = [
         <DefaultLayout />
       </AuthGuard>
     ),
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,
         element: <VisitasIndex />,
+        errorElement: <ErrorPage />,
         handle: {
           title: 'Gestión de Visitas',
           breadcrumb: 'Visitas',
@@ -157,6 +193,7 @@ const routes: RouteObject[] = [
       {
         path: 'crear',
         element: <VisitasCreate />,
+        errorElement: <ErrorPage />,
         handle: {
           title: 'Crear Visita',
           breadcrumb: 'Crear Visita',
@@ -172,10 +209,12 @@ const routes: RouteObject[] = [
         <DefaultLayout />
       </AuthGuard>
     ),
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,
         element: <Reports />,
+        errorElement: <ErrorPage />,
         handle: {
           title: 'Reportes',
           breadcrumb: 'Reportes',
@@ -190,10 +229,12 @@ const routes: RouteObject[] = [
         <DefaultLayout />
       </AdminGuard>
     ),
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,
         element: <Admin />,
+        errorElement: <ErrorPage />,
         handle: {
           title: 'Administración',
           breadcrumb: 'Administración',
@@ -205,6 +246,7 @@ const routes: RouteObject[] = [
   {
     path: '*',
     element: <NotFound />,
+    errorElement: <ErrorPage />,
     handle: {
       title: 'Página no encontrada',
     },
@@ -213,9 +255,6 @@ const routes: RouteObject[] = [
 
 export const router = createBrowserRouter(routes, {
   basename: import.meta.env.BASE_URL,
-  future: {
-    v7_startTransition: true,
-  },
 })
 
 export { RouterProvider }
