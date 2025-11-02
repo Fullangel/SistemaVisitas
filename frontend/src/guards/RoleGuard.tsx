@@ -17,13 +17,13 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   const location = useLocation()
 
   // Si no está autenticado, redirigir al login
-  if (!isAuthenticated) {
+  if (!isAuthenticated()) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />
   }
 
-  // Si el usuario no tiene rol, redirigir al dashboard general
+  // Si el usuario no tiene rol, redirigir a 403
   if (!user?.role) {
-    return <Navigate to={redirectTo} replace />
+    return <Navigate to="/forbidden" replace />
   }
 
   // Verificar si el rol del usuario está en los roles permitidos
@@ -31,8 +31,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   const normalizedAllowedRoles = allowedRoles.map(role => role.toLowerCase())
   
   if (!normalizedAllowedRoles.includes(userRole)) {
-    // Si no tiene el rol permitido, redirigir al dashboard general
-    return <Navigate to={redirectTo} replace />
+    // Si no tiene el rol permitido, redirigir a 403
+    return <Navigate to="/forbidden" replace />
   }
 
   return <>{children}</>

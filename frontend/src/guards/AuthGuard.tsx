@@ -10,7 +10,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
   const location = useLocation()
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated()) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />
   }
 

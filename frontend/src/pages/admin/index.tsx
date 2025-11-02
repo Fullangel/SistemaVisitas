@@ -23,7 +23,6 @@ interface User {
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState('users')
-  const [selectedUser, setSelectedUser] = useState<number | null>(null)
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false)
   
   // Datos simulados

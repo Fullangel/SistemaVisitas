@@ -8,7 +8,7 @@ import AuthLayout from '@/layouts/AuthLayout'
 // Páginas principales
 import Home from '@/pages/Home'
 import Login from '@/pages/auth/Login'
-import Register from '@/pages/auth/Register'
+// import Register from '@/pages/auth/Register'
 import Dashboard from '@/pages/Dashboard'
 import NotFound from '@/pages/NotFound'
 
@@ -44,23 +44,7 @@ const routes: RouteObject[] = [
       title: 'Iniciar Sesión',
     },
   },
-  {
-    path: '/auth/register',
-    element: (
-      <GuestGuard>
-        <AuthLayout />
-      </GuestGuard>
-    ),
-    children: [
-      {
-        index: true,
-        element: <Register />,
-        handle: {
-          title: 'Registrarse',
-        },
-      },
-    ],
-  },
+  // Registro público eliminado en debug router
   {
     path: '/dashboard',
     element: (

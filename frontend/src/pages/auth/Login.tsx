@@ -1,6 +1,4 @@
-"use client"
-
-import type React from "react"
+import React from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -22,6 +20,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Link } from "react-router-dom"
 import { useAuthStore } from "@/stores/auth"
+import { getDefaultRouteForRole } from "@/utils/role"
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -99,22 +98,9 @@ export default function LoginPage() {
       
       if (response.success && response.user) {
         setLoginAttempts(0)
-        
-        // Redirigir según el rol del usuario
-        if (response.user.role?.name === 'admin') {
-          navigate('/admin/dashboard')
-        } else if (response.user.role?.name === 'supervisor') {
-          navigate('/supervisor/dashboard')
-        } else if (response.user.role?.name === 'recepcion' || response.user.role?.name === 'reception') {
-          navigate('/reception/dashboard')
-        } else if (response.user.role?.name === 'employee') {
-          navigate('/employee/dashboard')
-        } else if (response.user.role?.name === 'visitor') {
-          navigate('/dashboard')
-        } else {
-          // Fallback al dashboard general
-          navigate('/dashboard')
-        }
+        // Redirigir según el rol del usuario (util centralizada)
+        const target = getDefaultRouteForRole(response.user.role?.name)
+        navigate(target)
       } else {
         // Login fallido pero sin excepción
         const newAttempts = loginAttempts + 1

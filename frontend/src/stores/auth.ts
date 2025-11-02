@@ -20,6 +20,7 @@ interface AuthState {
   removeToken: () => void
   setUser: (user: User) => void
   login: (login: string, password: string) => Promise<{ success: boolean; error?: string; user?: User; token?: string }>
+  register: (userData: { name: string; email: string; password: string; password_confirmation: string }) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   fetchUser: () => Promise<void>
   hasPermission: (permission: string) => boolean
@@ -43,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
       
       isAdmin: () => {
         const { user } = get()
-        return user?.role?.name === 'admin' || user?.role === 'admin'
+        return user?.role?.name === 'admin'
       },
       
       userPermissions: () => {

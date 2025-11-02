@@ -9,11 +9,11 @@ interface AdminGuardProps {
 export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
   const { isAuthenticated, isAdmin } = useAuthStore()
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated()) {
     return <Navigate to="/auth/login" replace />
   }
 
-  if (!isAdmin) {
+  if (!isAdmin()) {
     return <Navigate to="/dashboard" replace />
   }
 

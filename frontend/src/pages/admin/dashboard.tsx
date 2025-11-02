@@ -1,33 +1,22 @@
-import React, { useState, useEffect } from 'react'
-import { 
-  PeopleRegular,
-  SettingsRegular,
-  ShieldCheckmarkRegular,
-  KeyRegular,
-  ChartMultipleRegular,
-  DocumentTextRegular,
-  BuildingRegular,
-  PersonAddRegular,
-  ShieldRegular,
-  DatabaseRegular,
-  CloudRegular,
-  WrenchRegular,
-  TaskListLtrRegular,
-  ChartPersonRegular,
-  ArrowTrendingRegular,
-  FilterRegular,
-  ShareRegular,
-  ClockRegular,
-  CheckmarkCircleRegular,
-  DismissCircleRegular,
-  WarningRegular,
-  LocationRegular,
-  PeopleCommunityRegular,
-  TriangleRegular
-} from '@fluentui/react-icons'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DashboardLayout, DashboardStatCard, DashboardActionCard, QuickActionButton } from '@/components/dashboard/shared'
+import { useAuthStore } from '@/stores/auth'
+import {
+  PeopleCommunityRegular,
+  PeopleRegular,
+  EyeRegular,
+  ShieldCheckmarkRegular,
+  ChartMultipleRegular,
+  TriangleRegular,
+  CheckmarkCircleRegular,
+  SettingsRegular,
+  BuildingRegular,
+  PersonAddRegular
+} from '@fluentui/react-icons'
+
 import UserRegistrationModal from '@/components/admin/UserRegistrationModal'
 import GeneralConfigurationModal from '@/components/admin/GeneralConfigurationModal'
 import RoleManagementModal from '@/components/admin/RoleManagementModal'
@@ -37,30 +26,41 @@ import UserViewModal from '@/components/admin/UserViewModal'
 import RegionSiteManagementModal from '@/components/admin/RegionSiteManagementModal'
 import DepartmentRankManagementModal from '@/components/admin/DepartmentRankManagementModal'
 import VisitorManagementModal from '@/components/admin/VisitorManagementModal'
-import { useAuthStore } from '@/stores/auth'
-import { VenezuelaMapWrapper } from '@/components/venezuela-map-wrapper'
-import { DashboardHeader, DashboardStatCard, DashboardActionCard } from '@/components/dashboard/shared'
 
-interface User {
-  id: number
-  name: string
-  email: string
-  role: 'admin' | 'supervisor' | 'recepcion' | 'empleado'
-  status: 'active' | 'inactive'
-  last_login: string
-  visitas_count: number
+type AdminStats = {
+  totalUsers: number
+  activeVisits: number
+  totalVisits: number
+  pendingApprovals: number
+  systemHealth: 'good' | 'warning' | 'critical'
+  lastBackup: string
 }
 
-interface SystemStats {
-  total_users: number
-  active_visits: number
-  total_visits: number
-  pending_approvals: number
-  system_health: 'good' | 'warning' | 'critical'
-  last_backup: string
+type SectionAction = {
+  name: string
+  color: string
+  action: () => void
+}
+
+type SectionBlock = {
+  id: string
+  title: string
+  color: string
+  icon: any
+  actions: SectionAction[]
+}
+
+const theme = {
+  brand: {
+    primary: '#6366f1',
+    secondary: '#8b5cf6',
+    accent: '#0ea5e9'
+  }
 }
 
 export default function AdminDashboard() {
+  const { user } = useAuthStore()
+
   const [showUserModal, setShowUserModal] = useState(false)
   const [showGeneralConfigModal, setShowGeneralConfigModal] = useState(false)
   const [showRoleModal, setShowRoleModal] = useState(false)
@@ -70,292 +70,256 @@ export default function AdminDashboard() {
   const [showRegionSiteModal, setShowRegionSiteModal] = useState(false)
   const [showDepartmentRankModal, setShowDepartmentRankModal] = useState(false)
   const [showVisitorModal, setShowVisitorModal] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [users, setUsers] = useState<User[]>([])
-  const [stats, setStats] = useState<SystemStats>({
-    total_users: 156,
-    active_visits: 24,
-    total_visits: 1284,
-    pending_approvals: 8,
-    system_health: 'good',
-    last_backup: '2024-01-15 03:30:00'
+
+  const [stats, setStats] = useState<AdminStats>({
+    totalUsers: 42,
+    activeVisits: 5,
+    totalVisits: 128,
+    pendingApprovals: 3,
+    systemHealth: 'good',
+    lastBackup: 'hace 2 horas'
   })
-  const [currentTime, setCurrentTime] = useState(new Date())
 
-  const { user } = useAuthStore()
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [])
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
-    // Cargar usuarios del sistema
-    fetchUsers()
+    setStats(s => ({ ...s }))
   }, [])
 
-  const fetchUsers = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        console.error('No authentication token found')
-        setUsers([])
-        return
-      }
+  const fullName = useMemo(() => {
+    return (user?.first_name || user?.username || 'Usuario') + (user?.last_name ? ` ${user.last_name}` : '')
+  }, [user])
 
-      const axios = (await import('axios')).default
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      }
-
-      const response = await axios.get('/api/admin/users', config)
-      setUsers(response.data.users || [])
-    } catch (error) {
-      console.error('Error fetching users:', error)
-      setUsers([])
-    }
-  }
-
-  const handleUserCreated = () => {
-    fetchUsers()
-  }
-
-  const adminSections = [
+  const sections: SectionBlock[] = [
     {
       id: 'users',
-      title: 'Gestión de Usuarios',
-      icon: PeopleRegular,
+      title: 'Usuarios',
       color: 'blue',
+      icon: PeopleCommunityRegular,
       actions: [
-        { name: 'Crear Usuario', icon: PersonAddRegular, action: () => setShowUserModal(true), color: 'blue' },
-        { name: 'Gestionar Roles', icon: ShieldRegular, action: () => setShowRoleModal(true), color: 'purple' },
-        { name: 'Permisos', icon: KeyRegular, action: () => setShowPermissionModal(true), color: 'amber' },
-        { name: 'Auditoría', icon: ShieldCheckmarkRegular, action: () => setShowAuditModal(true), color: 'red' }
+        { name: 'Registrar Usuario', color: 'blue', action: () => setShowUserModal(true) },
+        { name: 'Ver Usuarios', color: 'green', action: () => setShowUserViewModal(true) },
+        { name: 'Roles', color: 'indigo', action: () => setShowRoleModal(true) },
+        { name: 'Permisos', color: 'amber', action: () => setShowPermissionModal(true) }
+      ]
+    },
+    {
+      id: 'structure',
+      title: 'Estructura',
+      color: 'indigo',
+      icon: BuildingRegular,
+      actions: [
+        { name: 'Regiones y Sedes', color: 'indigo', action: () => setShowRegionSiteModal(true) },
+        { name: 'Departamentos y Rangos', color: 'cyan', action: () => setShowDepartmentRankModal(true) },
+        { name: 'Visitantes', color: 'teal', action: () => setShowVisitorModal(true) }
       ]
     },
     {
       id: 'system',
-      title: 'Configuración del Sistema',
+      title: 'Sistema',
+      color: 'slate',
       icon: SettingsRegular,
-      color: 'green',
       actions: [
-        { name: 'Configuración General', icon: WrenchRegular, action: () => setShowGeneralConfigModal(true), color: 'slate' },
-        { name: 'Base de Datos', icon: DatabaseRegular, action: () => console.log('Gestión BD'), color: 'green' },
-        { name: 'Respaldos', icon: CloudRegular, action: () => console.log('Respaldos'), color: 'blue' },
-        { name: 'Logs del Sistema', icon: TaskListLtrRegular, action: () => console.log('Ver logs'), color: 'orange' }
+        { name: 'Configuración General', color: 'slate', action: () => setShowGeneralConfigModal(true) },
+        { name: 'Auditoría', color: 'red', action: () => setShowAuditModal(true) }
       ]
     },
     {
       id: 'reports',
-      title: 'Reportes Avanzados',
-      icon: ChartMultipleRegular,
+      title: 'Reportes',
       color: 'purple',
+      icon: ChartMultipleRegular,
       actions: [
-        { name: 'Reportes Ejecutivos', icon: ChartPersonRegular, action: () => console.log('Reportes ejecutivos'), color: 'indigo' },
-        { name: 'Análisis de Datos', icon: ArrowTrendingRegular, action: () => console.log('Análisis datos'), color: 'purple' },
-        { name: 'Exportar Datos', icon: DocumentTextRegular, action: () => console.log('Exportar datos'), color: 'green' },
-        { name: 'Filtros Avanzados', icon: FilterRegular, action: () => console.log('Filtros avanzados'), color: 'blue' }
-      ]
-    },
-    {
-      id: 'entities',
-      title: 'Gestión de Entidades',
-      icon: BuildingRegular,
-      color: 'orange',
-      actions: [
-        { name: 'Entidades Ministeriales', icon: BuildingRegular, action: () => setShowUserViewModal(true), color: 'blue' },
-        { name: 'Departamentos', icon: TaskListLtrRegular, action: () => setShowDepartmentRankModal(true), color: 'green' },
-        { name: 'Sedes', icon: LocationRegular, action: () => setShowRegionSiteModal(true), color: 'purple' },
-        { name: 'Personal', icon: PeopleRegular, action: () => setShowVisitorModal(true), color: 'orange' }
+        { name: 'Reportes Ejecutivos', color: 'indigo', action: () => {} },
+        { name: 'Estadísticas', color: 'purple', action: () => {} },
+        { name: 'Exportar Datos', color: 'green', action: () => {} }
       ]
     }
   ]
 
-  const getSystemHealthColor = () => {
-    switch (stats.system_health) {
-      case 'good': return 'text-green-600 bg-green-100'
-      case 'warning': return 'text-yellow-600 bg-yellow-100'
-      case 'critical': return 'text-red-600 bg-red-100'
-      default: return 'text-gray-600 bg-gray-100'
+  const filteredSections = sections.map(s => ({
+    ...s,
+    actions: s.actions.filter(a => a.name.toLowerCase().includes(search.toLowerCase()))
+  }))
+
+  const resolveActionIcon = (name: string) => {
+    switch (name) {
+      case 'Registrar Usuario':
+        return PersonAddRegular
+      case 'Ver Usuarios':
+        return EyeRegular
+      case 'Roles':
+        return PeopleRegular
+      case 'Permisos':
+        return ShieldCheckmarkRegular
+      case 'Regiones y Sedes':
+        return BuildingRegular
+      case 'Departamentos y Rangos':
+        return PeopleRegular
+      case 'Visitantes':
+        return PeopleCommunityRegular
+      case 'Configuración General':
+        return SettingsRegular
+      case 'Reportes Ejecutivos':
+      case 'Estadísticas':
+        return ChartMultipleRegular
+      case 'Exportar Datos':
+        return EyeRegular
+      default:
+        return EyeRegular
     }
   }
 
-  const getSystemHealthIcon = () => {
-    switch (stats.system_health) {
-      case 'good': return CheckmarkCircleRegular
-      case 'warning': return WarningRegular
-      case 'critical': return DismissCircleRegular
-      default: return ClockRegular
-    }
+  const heroStyle: React.CSSProperties = {
+    backgroundImage: `linear-gradient(90deg, ${theme.brand.primary} 0%, ${theme.brand.secondary} 45%, ${theme.brand.accent} 100%)`
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.15)_1px,transparent_0)] bg-[length:20px_20px] dark:bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)]" />
-      </div>
+    <DashboardLayout title="Administración" subtitle="Sistema de Visitas">
+      <section className="relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <aside className="lg:col-span-3">
+            <div className="sticky top-4 space-y-6">
+              <div className="rounded-2xl p-6 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-white/10 shadow-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Bienvenido</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{fullName}</p>
+                  </div>
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg">ADM</span>
+                </div>
+                <div className="mt-6">
+                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar acciones" className="bg-white/30 dark:bg-gray-900/30 border-white/20" />
+                </div>
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <QuickActionButton icon={PeopleCommunityRegular} label="Usuarios" color="blue" onClick={() => setShowUserViewModal(true)} />
+                  <QuickActionButton icon={SettingsRegular} label="Config." color="purple" onClick={() => setShowGeneralConfigModal(true)} />
+                  <QuickActionButton icon={PeopleRegular} label="Roles" color="indigo" onClick={() => setShowRoleModal(true)} />
+                  <QuickActionButton icon={ShieldCheckmarkRegular} label="Permisos" color="amber" onClick={() => setShowPermissionModal(true)} />
+                </div>
+              </div>
 
-      {/* Header */}
-      <header className="relative z-10 border-b border-gray-200/80 bg-white/90 backdrop-blur-xl dark:border-gray-700/50 dark:bg-slate-800/90 shadow-lg">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Panel de Administración
-              </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1" role="status" aria-live="polite">
-                Control total del sistema - {currentTime.toLocaleTimeString('es-VE')}
-              </p>
+              <div className="rounded-2xl p-6 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border border-white/10">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Atajos</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  <Button variant="ghost" className="justify-start">Panel principal</Button>
+                  <Button variant="ghost" className="justify-start">Auditoría</Button>
+                  <Button variant="ghost" className="justify-start">Respaldos</Button>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className={`px-3 py-1 rounded-full text-xs font-medium ${getSystemHealthColor()}`}>
-                <span className="flex items-center">
-                  {React.createElement(getSystemHealthIcon(), { className: "w-3 h-3 mr-1" })}
-                  Sistema {stats.system_health === 'good' ? 'Operativo' : stats.system_health === 'warning' ? 'Advertencia' : 'Crítico'}
-                </span>
+          </aside>
+
+          <div className="lg:col-span-9 space-y-6">
+            <div className="rounded-3xl overflow-hidden text-white shadow-2xl" style={heroStyle}>
+              <div className="px-8 py-8 flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-semibold">Panel de Administración</h1>
+                  <p className="text-white/80">Control total del sistema de visitas</p>
+                </div>
+                <div className="hidden md:flex gap-3">
+                  <Button variant="secondary" className="bg-white/20 hover:bg-white/30">Configurar</Button>
+                  <Button className="bg-white text-indigo-700 hover:bg-indigo-50">Crear reporte</Button>
+                </div>
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Usuario: {user?.name || 'Admin'}
-              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <DashboardStatCard title="Total Usuarios" value={stats.totalUsers} icon={PeopleCommunityRegular} color="blue" subtitle={`Activos`} trend={{ value: 1.2, direction: 'up' }} />
+              <DashboardStatCard title="Visitas Activas" value={stats.activeVisits} icon={CheckmarkCircleRegular} color="green" subtitle="Ahora" trend={{ value: 3.4, direction: 'up' }} />
+              <DashboardStatCard title="Total Visitas" value={stats.totalVisits} icon={ChartMultipleRegular} color="purple" subtitle="Este mes" />
+              <DashboardStatCard title="Pendientes" value={stats.pendingApprovals} icon={TriangleRegular} color="orange" subtitle="Atención" trend={{ value: 0.8, direction: 'down' }} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {filteredSections.map((section) => (
+                <DashboardActionCard
+                  key={section.id}
+                  title={section.title}
+                  description={`Gestión de ${section.title.toLowerCase()}`}
+                  actions={section.actions.map((a, idx) => ({
+                    name: a.name,
+                    icon: resolveActionIcon(a.name),
+                    action: a.action,
+                    color: a.color as any,
+                    variant: idx === 0 ? 'default' : 'outline'
+                  }))}
+                  icon={section.icon}
+                  color={section.color as any}
+                />
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-2 backdrop-blur-sm bg-white/80 dark:bg-gray-800/80">
+                <CardHeader>
+                  <CardTitle>Actividad Reciente</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    <li className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="h-5 w-5 rounded bg-blue-600" />
+                        <span className="text-sm">Se creó un nuevo usuario</span>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">hace 5 min</span>
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="h-5 w-5 rounded bg-green-600" />
+                        <span className="text-sm">Aprobada una solicitud de visita</span>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-800">hace 20 min</span>
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="h-5 w-5 rounded bg-indigo-600" />
+                        <span className="text-sm">Generado reporte mensual</span>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-800">ayer</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80">
+                <CardHeader>
+                  <CardTitle>Alertas del Sistema</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <span className="h-5 w-5 rounded bg-orange-600 mt-0.5" />
+                      <div>
+                        <div className="text-sm font-medium">Revisión de respaldos</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Último respaldo: {stats.lastBackup}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="h-5 w-5 rounded bg-green-600 mt-0.5" />
+                      <div>
+                        <div className="text-sm font-medium">Seguridad activa</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Estado del sistema: {stats.systemHealth}</div>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="w-full">Ver detalles</Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
-      </header>
+      </section>
 
-      {/* Main Content */}
-      <main className="relative z-20 p-6">
-        {/* System Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
-              <PeopleCommunityRegular className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.total_users}</div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {users.filter(u => u.status === 'active').length} activos
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Visitas Activas</CardTitle>
-              <div className="h-4 w-4 text-green-600 bg-green-100 rounded-full animate-pulse" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.active_visits}</div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">En este momento</p>
-            </CardContent>
-          </Card>
-
-          <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Visitas</CardTitle>
-              <ChartMultipleRegular className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{stats.total_visits}</div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Este mes</p>
-            </CardContent>
-          </Card>
-
-          <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-              <TriangleRegular className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.pending_approvals}</div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Requieren atención</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Admin Sections */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {adminSections.map((section) => (
-            <DashboardActionCard
-              key={section.id}
-              title={section.title}
-              description={`Gestión de ${section.title.toLowerCase()}`}
-              actions={section.actions}
-              icon={section.icon}
-              color={section.color}
-            />
-          ))}
-        </div>
-      </main>
-
-      {/* User Registration Modal */}
-      <UserRegistrationModal
-        isOpen={showUserModal}
-        onClose={() => setShowUserModal(false)}
-        onUserCreated={handleUserCreated}
-      />
-
-      {/* General Configuration Modal */}
-      <GeneralConfigurationModal
-        isOpen={showGeneralConfigModal}
-        onClose={() => setShowGeneralConfigModal(false)}
-        onConfigurationUpdated={() => {
-          // Recargar datos si es necesario
-          console.log('Configuración actualizada')
-        }}
-      />
-
-      {/* Role Management Modal */}
-      <RoleManagementModal
-        isOpen={showRoleModal}
-        onClose={() => setShowRoleModal(false)}
-        onRoleUpdated={() => console.log('Rol actualizado')}
-      />
-
-      {/* Permission Management Modal */}
-      <PermissionManagementModal
-        isOpen={showPermissionModal}
-        onClose={() => setShowPermissionModal(false)}
-        onPermissionUpdated={() => console.log('Permisos actualizados')}
-      />
-
-      {/* Audit Management Modal */}
-      <AuditManagementModal
-        isOpen={showAuditModal}
-        onClose={() => setShowAuditModal(false)}
-        onAuditUpdated={() => console.log('Auditoría actualizada')}
-      />
-
-      {/* User View Modal */}
-      <UserViewModal
-        isOpen={showUserViewModal}
-        onClose={() => setShowUserViewModal(false)}
-        onUserUpdated={() => console.log('Usuario actualizado')}
-      />
-
-      {/* Region Site Management Modal */}
-      <RegionSiteManagementModal
-        isOpen={showRegionSiteModal}
-        onClose={() => setShowRegionSiteModal(false)}
-        onRegionSiteUpdated={() => console.log('Región/Sede actualizada')}
-      />
-
-      {/* Department Rank Management Modal */}
-      <DepartmentRankManagementModal
-        isOpen={showDepartmentRankModal}
-        onClose={() => setShowDepartmentRankModal(false)}
-        onDepartmentRankUpdated={() => console.log('Departamento/Rango actualizado')}
-      />
-
-      {/* Visitor Management Modal */}
-      <VisitorManagementModal
-        isOpen={showVisitorModal}
-        onClose={() => setShowVisitorModal(false)}
-        onVisitorUpdated={() => console.log('Visitante actualizado')}
-      />
-    </div>
+      <UserRegistrationModal isOpen={showUserModal} onClose={() => setShowUserModal(false)} onUserCreated={() => setStats(p => ({ ...p, totalUsers: p.totalUsers + 1 }))} />
+      <GeneralConfigurationModal isOpen={showGeneralConfigModal} onClose={() => setShowGeneralConfigModal(false)} onConfigurationUpdated={() => {}} />
+      <RoleManagementModal isOpen={showRoleModal} onClose={() => setShowRoleModal(false)} onRoleUpdated={() => {}} />
+      <PermissionManagementModal isOpen={showPermissionModal} onClose={() => setShowPermissionModal(false)} onPermissionUpdated={() => {}} />
+      <AuditManagementModal isOpen={showAuditModal} onClose={() => setShowAuditModal(false)} onAuditUpdated={() => {}} />
+      <UserViewModal isOpen={showUserViewModal} onClose={() => setShowUserViewModal(false)} onUserUpdated={() => {}} />
+      <RegionSiteManagementModal isOpen={showRegionSiteModal} onClose={() => setShowRegionSiteModal(false)} onRegionSiteUpdated={() => {}} />
+      <DepartmentRankManagementModal isOpen={showDepartmentRankModal} onClose={() => setShowDepartmentRankModal(false)} onDepartmentRankUpdated={() => {}} />
+      <VisitorManagementModal isOpen={showVisitorModal} onClose={() => setShowVisitorModal(false)} onVisitorUpdated={() => {}} />
+    </DashboardLayout>
   )
 }

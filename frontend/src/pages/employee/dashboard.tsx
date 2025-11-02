@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuthStore } from '@/stores/auth'
 import { DashboardHeader, DashboardStatCard, DashboardActionCard } from '@/components/dashboard/shared'
+import type { DashboardColor } from '@/components/dashboard/shared'
 
 interface Visit {
   id: number
@@ -114,29 +115,40 @@ export default function EmployeeDashboard() {
     }
   }
 
-  const employeeSections = [
+  const employeeSections: Array<{
+    id: string
+    title: string
+    icon: React.ComponentType<{ className?: string }>
+    color: DashboardColor
+    actions: Array<{
+      name: string
+      icon: React.ComponentType<{ className?: string }>
+      action: () => void
+      color: DashboardColor
+    }>
+  }> = [
     {
       id: 'profile',
       title: 'Mi Perfil',
       icon: PersonRegular,
-      color: 'blue' as const,
+      color: 'blue',
       actions: [
-        { name: 'Ver Perfil', icon: PersonRegular, action: handleViewProfile, color: 'blue' as const },
-        { name: 'Editar Datos', icon: EditRegular, action: () => console.log('Editar datos'), color: 'blue' as const },
-        { name: 'Cambiar Contraseña', icon: KeyRegular, action: () => console.log('Cambiar contraseña'), color: 'purple' as const },
-        { name: 'Mis Permisos', icon: SettingsRegular, action: () => console.log('Ver permisos'), color: 'green' as const }
+        { name: 'Ver Perfil', icon: PersonRegular, action: handleViewProfile, color: 'blue' },
+        { name: 'Editar Datos', icon: EditRegular, action: () => console.log('Editar datos'), color: 'blue' },
+        { name: 'Cambiar Contraseña', icon: KeyRegular, action: () => console.log('Cambiar contraseña'), color: 'purple' },
+        { name: 'Mis Permisos', icon: SettingsRegular, action: () => console.log('Ver permisos'), color: 'green' }
       ]
     },
     {
       id: 'visits',
       title: 'Mis Visitas',
       icon: EyeRegular,
-      color: 'green' as const,
+      color: 'green',
       actions: [
-        { name: 'Visitas Pendientes', icon: ClockRegular, action: handleViewPendingVisits, color: 'yellow' as const },
-        { name: 'Historial de Visitas', icon: DocumentTextRegular, action: handleViewHistory, color: 'green' as const },
-        { name: 'Estadísticas Personales', icon: ChartMultipleRegular, action: () => console.log('Ver estadísticas'), color: 'purple' as const },
-        { name: 'Reporte Mensual', icon: CalendarRegular, action: handleGenerateReport, color: 'indigo' as const }
+        { name: 'Visitas Pendientes', icon: ClockRegular, action: handleViewPendingVisits, color: 'yellow' },
+        { name: 'Historial de Visitas', icon: DocumentTextRegular, action: handleViewHistory, color: 'green' },
+        { name: 'Estadísticas Personales', icon: ChartMultipleRegular, action: () => console.log('Ver estadísticas'), color: 'purple' },
+        { name: 'Reporte Mensual', icon: CalendarRegular, action: handleGenerateReport, color: 'indigo' }
       ]
     }
   ]
@@ -186,7 +198,7 @@ export default function EmployeeDashboard() {
               description={`Acceso a funciones de ${section.title.toLowerCase()}`}
               actions={section.actions}
               icon={section.icon}
-              color={section.color as any}
+              color={section.color}
             />
           ))}
         </div>

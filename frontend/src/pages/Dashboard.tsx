@@ -1,517 +1,276 @@
-import { useNavigate } from "react-router-dom"
-import { useAuthStore } from "../stores/auth"
-import { Button } from "../components/ui/button"
-import { Card } from "../components/ui/card"
-import UserRegistrationModal from "../components/admin/UserRegistrationModal"
-import RoleManagementModal from "../components/admin/RoleManagementModal"
-import PermissionManagementModal from "../components/admin/PermissionManagementModal"
-import AuditManagementModal from "../components/admin/AuditManagementModal"
-import UserViewModal from "../components/admin/UserViewModal"
-import RegionSiteManagementModal from "../components/admin/RegionSiteManagementModal"
-import DepartmentRankManagementModal from "../components/admin/DepartmentRankManagementModal"
-import VisitorManagementModal from "../components/admin/VisitorManagementModal"
-import GeneralConfigurationModal from "../components/admin/GeneralConfigurationModal"
-
+import React, { useEffect, useMemo, useState } from 'react'
+import { DashboardLayout, DashboardStatCard, DashboardActionCard, QuickActionButton } from '@/components/dashboard/shared'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { useAuthStore } from '@/stores/auth'
 import {
-  BuildingRegular,
-  PersonRegular,
-  ArrowExitRegular,
-  SettingsRegular,
-  DatabaseRegular,
-  DocumentTextRegular,
-  DocumentRegular,
-  ChartMultipleRegular,
-  ArrowTrendingRegular,
-  FilterRegular,
-  ArrowDownloadRegular as DownloadRegular,
-  CloudRegular,
-  ShieldCheckmarkRegular,
-  TaskListLtrRegular as TaskListRegular,
-  TimePickerRegular,
-  CheckmarkCircleRegular,
-  GroupRegular,
-  KeyRegular,
-  EyeRegular,
-  CalendarRegular,
+  PeopleCommunityRegular,
   PeopleRegular,
-  ClockRegular,
-  MailRegular,
-  AddRegular,
-  SearchRegular,
-  EditRegular,
-  BadgeRegular,
-  AlertRegular,
-  DismissRegular,
-  DocumentBulletListRegular as ReportRegular,
-  BriefcaseRegular,
-  ShareRegular
-} from "@fluentui/react-icons"
-import React, { useState, useEffect } from "react"
+  EyeRegular,
+  ShieldCheckmarkRegular,
+  PersonAddRegular,
+  ChartMultipleRegular,
+  TriangleRegular,
+  CheckmarkCircleRegular,
+  SettingsRegular,
+  BuildingRegular,
+  AddRegular
+} from '@fluentui/react-icons'
 
-// Interfaces de tipos
-interface ActionConfig {
-  name: string
-  icon: React.ComponentType<{ className?: string }>
-  color: string
+import UserRegistrationModal from '@/components/admin/UserRegistrationModal'
+import GeneralConfigurationModal from '@/components/admin/GeneralConfigurationModal'
+import RoleManagementModal from '@/components/admin/RoleManagementModal'
+import PermissionManagementModal from '@/components/admin/PermissionManagementModal'
+import AuditManagementModal from '@/components/admin/AuditManagementModal'
+import UserViewModal from '@/components/admin/UserViewModal'
+import RegionSiteManagementModal from '@/components/admin/RegionSiteManagementModal'
+import DepartmentRankManagementModal from '@/components/admin/DepartmentRankManagementModal'
+import VisitorManagementModal from '@/components/admin/VisitorManagementModal'
+
+type MetricStat = {
+  totalUsers: number
+  activeVisits: number
+  totalVisits: number
+  pendingApprovals: number
 }
 
-interface SectionConfig {
+type ActionItem = {
+  name: string
+  color: string
+  icon: any
+  action: () => void
+}
+
+type ModuleBlock = {
   id: string
   title: string
-  icon: React.ComponentType<{ className?: string }>
-  actions: ActionConfig[]
+  color: string
+  icon: any
+  actions: ActionItem[]
 }
 
-interface RoleConfig {
-  title: string
-  subtitle: string
-  sections: SectionConfig[]
-}
-
-interface RoleConfigs {
-  admin: RoleConfig
-  supervisor: RoleConfig
-  recepcion: RoleConfig
-  employee: RoleConfig
-  visitor: RoleConfig
-}
-
-// Configuración de roles centralizada
-const roleConfig: RoleConfigs = {
-  admin: {
-    title: 'Panel de Administración',
-    subtitle: 'Control total del sistema',
-    sections: [
-      {
-        id: 'users',
-        title: 'Gestión de Usuarios',
-        icon: GroupRegular,
-        actions: [
-          { name: 'Crear Usuario', icon: PersonRegular, color: 'blue' },
-          { name: 'Vista de Usuarios', icon: GroupRegular, color: 'green' },
-          { name: 'Visitantes', icon: PersonRegular, color: 'teal' },
-          { name: 'Gestión de Regiones y Sedes', icon: BuildingRegular, color: 'indigo' },
-          { name: 'Gestión de Departamentos y Rangos', icon: BriefcaseRegular, color: 'cyan' },
-          { name: 'Gestionar Roles', icon: SettingsRegular, color: 'purple' },
-          { name: 'Permisos', icon: KeyRegular, color: 'amber' },
-          { name: 'Auditoría', icon: ShieldCheckmarkRegular, color: 'red' },
-        ]
-      },
-      {
-        id: 'system',
-        title: 'Configuración del Sistema',
-        icon: SettingsRegular,
-        actions: [
-          { name: 'Configuración General', icon: SettingsRegular, color: 'slate' },
-          { name: 'Base de Datos', icon: DatabaseRegular, color: 'green' },
-          { name: 'Respaldos', icon: CloudRegular, color: 'blue' },
-          { name: 'Logs del Sistema', icon: DocumentTextRegular, color: 'orange' },
-        ]
-      },
-      {
-        id: 'reports',
-        title: 'Reportes Avanzados',
-        icon: ChartMultipleRegular,
-        actions: [
-          { name: 'Reportes Ejecutivos', icon: ReportRegular, color: 'indigo' },
-          { name: 'Análisis de Datos', icon: ChartMultipleRegular, color: 'purple' },
-          { name: 'Exportar Datos', icon: DownloadRegular, color: 'green' },
-          { name: 'Programar Reportes', icon: TimePickerRegular, color: 'blue' },
-        ]
-      }
-    ]
+const theme = {
+  brand: {
+    primary: '#6366f1',
+    secondary: '#8b5cf6',
+    accent: '#0ea5e9'
   },
-  supervisor: {
-    title: 'Panel de Supervisión',
-    subtitle: 'Supervisión y control operativo',
-    sections: [
-      {
-        id: 'visits',
-        title: 'Supervisión de Visitas',
-        icon: EyeRegular,
-        actions: [
-          { name: 'Monitorear Visitas', icon: EyeRegular, color: 'blue' },
-          { name: 'Aprobar Solicitudes', icon: CheckmarkCircleRegular, color: 'green' },
-          { name: 'Gestionar Horarios', icon: CalendarRegular, color: 'purple' },
-          { name: 'Control de Acceso', icon: ShieldCheckmarkRegular, color: 'red' },
-        ]
-      },
-      {
-        id: 'staff',
-        title: 'Gestión de Personal',
-        icon: PeopleRegular,
-        actions: [
-          { name: 'Asignar Tareas', icon: TaskListRegular, color: 'amber' },
-          { name: 'Evaluar Desempeño', icon: ChartMultipleRegular, color: 'indigo' },
-          { name: 'Horarios de Trabajo', icon: ClockRegular, color: 'slate' },
-          { name: 'Comunicaciones', icon: MailRegular, color: 'blue' },
-        ]
-      },
-      {
-        id: 'reports',
-        title: 'Reportes Operativos',
-        icon: DocumentTextRegular,
-        actions: [
-          { name: 'Reportes Diarios', icon: DocumentTextRegular, color: 'green' },
-          { name: 'Estadísticas', icon: ArrowTrendingRegular, color: 'blue' },
-          { name: 'Filtros Avanzados', icon: FilterRegular, color: 'purple' },
-          { name: 'Compartir Reportes', icon: ShareRegular, color: 'orange' },
-        ]
-      }
-    ]
-  },
-  recepcion: {
-    title: 'Panel de Recepción',
-    subtitle: 'Gestión de visitantes y accesos',
-    sections: [
-      {
-        id: 'visitors',
-        title: 'Gestión de Visitantes',
-        icon: PersonRegular,
-        actions: [
-          { name: 'Registrar Visita', icon: AddRegular, color: 'green' },
-          { name: 'Buscar Visitante', icon: SearchRegular, color: 'blue' },
-          { name: 'Editar Información', icon: EditRegular, color: 'amber' },
-          { name: 'Finalizar Visita', icon: CheckmarkCircleRegular, color: 'red' },
-        ]
-      },
-      {
-        id: 'access',
-        title: 'Control de Acceso',
-        icon: BuildingRegular,
-        actions: [
-          { name: 'Verificar Identidad', icon: BadgeRegular, color: 'purple' },
-          { name: 'Generar Pase', icon: KeyRegular, color: 'green' },
-          { name: 'Control de Entrada/Salida', icon: ClockRegular, color: 'blue' },
-          { name: 'Alertas de Seguridad', icon: AlertRegular, color: 'red' },
-        ]
-      },
-      {
-        id: 'reports',
-        title: 'Reportes de Recepción',
-        icon: DocumentTextRegular,
-        actions: [
-          { name: 'Reporte de Visitas', icon: DocumentTextRegular, color: 'green' },
-          { name: 'Estadísticas de Acceso', icon: ArrowTrendingRegular, color: 'blue' },
-          { name: 'Visitas por Fecha', icon: CalendarRegular, color: 'purple' },
-          { name: 'Exportar Reportes', icon: DownloadRegular, color: 'orange' },
-        ]
-      }
-    ]
-  },
-  employee: {
-    title: 'Panel de Empleado',
-    subtitle: 'Herramientas de trabajo',
-    sections: [
-      {
-        id: 'visits',
-        title: 'Gestión de Visitas',
-        icon: EyeRegular,
-        actions: [
-          { name: 'Ver Mis Visitas', icon: EyeRegular, color: 'blue' },
-          { name: 'Solicitar Visita', icon: AddRegular, color: 'green' },
-          { name: 'Editar Visita', icon: EditRegular, color: 'amber' },
-          { name: 'Cancelar Visita', icon: DismissRegular, color: 'red' },
-        ]
-      },
-      {
-        id: 'profile',
-        title: 'Mi Perfil',
-        icon: PersonRegular,
-        actions: [
-          { name: 'Ver Perfil', icon: PersonRegular, color: 'blue' },
-          { name: 'Editar Datos', icon: EditRegular, color: 'amber' },
-          { name: 'Cambiar Contraseña', icon: KeyRegular, color: 'purple' },
-          { name: 'Notificaciones', icon: MailRegular, color: 'green' },
-        ]
-      },
-      {
-        id: 'reports',
-        title: 'Reportes Personales',
-        icon: DocumentTextRegular,
-        actions: [
-          { name: 'Mis Reportes', icon: DocumentTextRegular, color: 'green' },
-          { name: 'Estadísticas', icon: ChartMultipleRegular, color: 'blue' },
-          { name: 'Historial', icon: ClockRegular, color: 'purple' },
-          { name: 'Exportar Datos', icon: DownloadRegular, color: 'orange' },
-        ]
-      }
-    ]
-  },
-  visitor: {
-    title: 'Panel de Visitante',
-    subtitle: 'Acceso limitado al sistema',
-    sections: [
-      {
-        id: 'profile',
-        title: 'Mi Perfil',
-        icon: PersonRegular,
-        actions: [
-          { name: 'Ver Perfil', icon: PersonRegular, color: 'blue' },
-          { name: 'Editar Datos', icon: EditRegular, color: 'amber' },
-          { name: 'Cambiar Contraseña', icon: KeyRegular, color: 'purple' },
-        ]
-      }
-    ]
+  surface: {
+    glassLight: 'rgba(255,255,255,0.7)',
+    glassDark: 'rgba(17,24,39,0.7)'
   }
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate()
-  const { user, isAuthenticated, logout, isLoading: authLoading } = useAuthStore()
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasRedirected, setHasRedirected] = useState(false)
-  const [currentTime, setCurrentTime] = useState('')
-  
-  // Obtener el rol del usuario
-  const userRole = user?.role?.name || 'admin'
-  const currentConfig = roleConfig[userRole] || roleConfig.admin
-  
-  // Estado de modales
-  const [modals, setModals] = useState({
-    userRegistration: false,
-    roleManagement: false,
-    permissionManagement: false,
-    auditManagement: false,
-    userView: false,
-    regionSiteManagement: false,
-    departmentRankManagement: false,
-    visitorManagement: false,
-    generalConfiguration: false
+  const { user } = useAuthStore()
+
+  const [stats, setStats] = useState<MetricStat>({
+    totalUsers: 42,
+    activeVisits: 5,
+    totalVisits: 128,
+    pendingApprovals: 3
   })
 
-  // Actualizar hora actual
+  const [search, setSearch] = useState('')
+
+  const [showUserModal, setShowUserModal] = useState(false)
+  const [showGeneralConfigModal, setShowGeneralConfigModal] = useState(false)
+  const [showRoleModal, setShowRoleModal] = useState(false)
+  const [showPermissionModal, setShowPermissionModal] = useState(false)
+  const [showAuditModal, setShowAuditModal] = useState(false)
+  const [showUserViewModal, setShowUserViewModal] = useState(false)
+  const [showRegionSiteModal, setShowRegionSiteModal] = useState(false)
+  const [showDepartmentRankModal, setShowDepartmentRankModal] = useState(false)
+  const [showVisitorModal, setShowVisitorModal] = useState(false)
+
   useEffect(() => {
-    const updateTime = () => {
-      setCurrentTime(new Date().toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" }))
-    }
-    updateTime()
-    const interval = setInterval(updateTime, 60000)
-    return () => clearInterval(interval)
+    setStats(s => ({ ...s }))
   }, [])
 
-  // Redirección basada en rol
-  useEffect(() => {
-    if (authLoading) return
-    if (!isAuthenticated || !user) {
-      navigate('/login')
-      return
+  const fullName = useMemo(() => {
+    return (user?.first_name || user?.username || 'Usuario') + (user?.last_name ? ` ${user.last_name}` : '')
+  }, [user])
+
+  const modules: ModuleBlock[] = [
+    {
+      id: 'visits',
+      title: 'Visitas',
+      color: 'blue',
+      icon: CheckmarkCircleRegular,
+      actions: [
+        { name: 'Registrar Visita', color: 'blue', icon: AddRegular, action: () => setShowVisitorModal(true) },
+        { name: 'Ver Visitas', color: 'green', icon: EyeRegular, action: () => setShowUserViewModal(true) }
+      ]
+    },
+    {
+      id: 'entities',
+      title: 'Entidades y Sedes',
+      color: 'indigo',
+      icon: BuildingRegular,
+      actions: [
+        { name: 'Gestionar Sedes', color: 'indigo', icon: BuildingRegular, action: () => setShowRegionSiteModal(true) },
+        { name: 'Departamentos y Rangos', color: 'cyan', icon: PeopleRegular, action: () => setShowDepartmentRankModal(true) }
+      ]
+    },
+    {
+      id: 'users',
+      title: 'Usuarios',
+      color: 'purple',
+      icon: PeopleCommunityRegular,
+      actions: [
+        { name: 'Crear Usuario', color: 'purple', icon: PersonAddRegular, action: () => setShowUserModal(true) },
+        { name: 'Ver Usuarios', color: 'green', icon: EyeRegular, action: () => setShowUserViewModal(true) }
+      ]
+    },
+    {
+      id: 'system',
+      title: 'Sistema',
+      color: 'slate',
+      icon: SettingsRegular,
+      actions: [
+        { name: 'Configuración', color: 'slate', icon: SettingsRegular, action: () => setShowGeneralConfigModal(true) },
+        { name: 'Permisos', color: 'amber', icon: ShieldCheckmarkRegular, action: () => setShowPermissionModal(true) }
+      ]
     }
-    if (hasRedirected) return
+  ]
 
-    setIsLoading(false)
+  const filteredModules = modules.map(m => ({
+    ...m,
+    actions: m.actions.filter(a => a.name.toLowerCase().includes(search.toLowerCase()))
+  }))
 
-    // Redirigir según el rol del usuario
-    let shouldRedirect = false
-    let targetPath = ''
-    
-    switch (userRole) {
-      case 'admin':
-        shouldRedirect = true
-        targetPath = '/admin/dashboard'
-        break
-      case 'supervisor':
-        shouldRedirect = true
-        targetPath = '/supervisor/dashboard'
-        break
-      case 'recepcion':
-        shouldRedirect = true
-        targetPath = '/reception/dashboard'
-        break
-      case 'employee':
-      case 'visitor':
-        shouldRedirect = true
-        targetPath = '/employee/dashboard'
-        break
-      default:
-        // Rol desconocido, permanecer en el dashboard actual
-        break
-    }
-
-    if (shouldRedirect && targetPath !== window.location.pathname) {
-      setHasRedirected(true)
-      navigate(targetPath)
-    }
-  }, [authLoading, isAuthenticated, user, userRole, hasRedirected, navigate])
-
-  // Función para manejar apertura/cierre de modales
-  const toggleModal = (modalName: keyof typeof modals, open: boolean) => {
-    setModals(prev => ({ ...prev, [modalName]: open }))
-  }
-
-  // Función para manejar acciones del dashboard
-  const handleActionClick = (actionName: string) => {
-    const actionMap: Record<string, keyof typeof modals> = {
-      'Crear Usuario': 'userRegistration',
-      'Vista de Usuarios': 'userView',
-      'Gestionar Roles': 'roleManagement',
-      'Permisos': 'permissionManagement',
-      'Auditoría': 'auditManagement',
-      'Gestión de Regiones y Sedes': 'regionSiteManagement',
-      'Gestión de Departamentos y Rangos': 'departmentRankManagement',
-      'Visitantes': 'visitorManagement',
-      'Configuración General': 'generalConfiguration'
-    }
-
-    const modalKey = actionMap[actionName]
-    if (modalKey) {
-      toggleModal(modalKey, true)
-    } else {
-      console.log(`Acción no implementada: ${actionName}`)
-    }
-  }
-
-  // Renderizado condicional
-  if (isLoading || authLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando dashboard...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated || !user) {
-    return null
+  const heroStyle: React.CSSProperties = {
+    backgroundImage: `linear-gradient(90deg, ${theme.brand.primary} 0%, ${theme.brand.secondary} 45%, ${theme.brand.accent} 100%)`
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.15)_1px,transparent_0)] bg-[length:20px_20px] dark:bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)]" />
-      </div>
-
-      {/* Header */}
-      <header className="relative z-10 border-b border-gray-200/80 bg-white/90 backdrop-blur-xl dark:border-gray-700/50 dark:bg-slate-800/90 shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Sistema de Visitas
-              </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Panel de Control - {currentTime}
-              </p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Rol: {user?.role?.name || 'Desconocido'}
+    <DashboardLayout title="Inicio" subtitle="Sistema de Visitas">
+      <section className="relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <aside className="lg:col-span-3">
+            <div className="sticky top-4 space-y-6">
+              <div className="rounded-2xl p-6 backdrop-blur-xl border border-white/10 shadow-xl" style={{ backgroundColor: theme.surface.glassLight }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Hola</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{fullName}</p>
+                  </div>
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg">USR</span>
+                </div>
+                <div className="mt-6">
+                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar acciones" className="bg-white/30 dark:bg-gray-900/30 border-white/20" />
+                </div>
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <QuickActionButton icon={PersonAddRegular} label="Crear" color="blue" onClick={() => setShowUserModal(true)} />
+                  <QuickActionButton icon={SettingsRegular} label="Config." color="purple" onClick={() => setShowGeneralConfigModal(true)} />
+                  <QuickActionButton icon={BuildingRegular} label="Sedes" color="indigo" onClick={() => setShowRegionSiteModal(true)} />
+                  <QuickActionButton icon={ShieldCheckmarkRegular} label="Permisos" color="amber" onClick={() => setShowPermissionModal(true)} />
+                </div>
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Usuario: {user?.name || 'Invitado'}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={logout}
-                className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
-              >
-                <ArrowExitRegular className="h-4 w-4 mr-1" />
-                Salir
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="relative z-20 max-w-7xl mx-auto px-6 py-8" role="main">
-        {/* Quick Actions */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4" id="quick-actions-title">Acciones Rápidas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" role="group" aria-labelledby="quick-actions-title">
-            {currentConfig.sections.flatMap((section: SectionConfig) =>
-              section.actions.map((action: ActionConfig, index: number) => (
+              <div className="rounded-2xl p-6 border border-white/10" style={{ backgroundColor: theme.surface.glassLight }}>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Accesos rápidos</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  <Button variant="ghost" className="justify-start">Mis visitas</Button>
+                  <Button variant="ghost" className="justify-start">Usuarios</Button>
+                  <Button variant="ghost" className="justify-start">Reportes</Button>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <div className="lg:col-span-9 space-y-6">
+            <div className="rounded-3xl overflow-hidden text-white shadow-2xl" style={heroStyle}>
+              <div className="px-8 py-8 flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-semibold">Sistema de Visitas</h1>
+                  <p className="text-white/80">Resumen y accesos rápidos</p>
+                </div>
+                <div className="hidden md:flex gap-3">
+                  <Button variant="secondary" className="bg-white/20 hover:bg-white/30">Nueva visita</Button>
+                  <Button className="bg-white text-indigo-700 hover:bg-indigo-50">Generar reporte</Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <DashboardStatCard title="Usuarios" value={stats.totalUsers} icon={PeopleCommunityRegular} color="blue" subtitle="Activos" trend={{ value: 1.2, direction: 'up' }} />
+              <DashboardStatCard title="Visitas Activas" value={stats.activeVisits} icon={CheckmarkCircleRegular} color="green" subtitle="Ahora" trend={{ value: 3.4, direction: 'up' }} />
+              <DashboardStatCard title="Visitas Totales" value={stats.totalVisits} icon={ChartMultipleRegular} color="purple" subtitle="Este mes" />
+              <DashboardStatCard title="Pendientes" value={stats.pendingApprovals} icon={TriangleRegular} color="orange" subtitle="Atención" trend={{ value: 0.8, direction: 'down' }} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {filteredModules.map((module) => (
                 <DashboardActionCard
-                  key={`${action.name}-${index}`}
-                  title={action.name}
-                  description="Haz clic para acceder"
-                  icon={action.icon}
-                  onClick={() => handleActionClick(action.name)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={action.name}
+                  key={module.id}
+                  title={module.title}
+                  description={`Acciones de ${module.title.toLowerCase()}`}
+                  actions={module.actions.map((a, idx) => ({
+                    name: a.name,
+                    icon: a.icon,
+                    action: a.action,
+                    color: a.color as any,
+                    variant: idx === 0 ? 'default' : 'outline'
+                  }))}
+                  icon={module.icon}
+                  color={module.color as any}
                 />
-              ))
-            )}
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-2 backdrop-blur-sm" style={{ backgroundColor: theme.surface.glassLight }}>
+                <CardHeader>
+                  <CardTitle>Actividad Reciente</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    <li className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="h-5 w-5 rounded bg-blue-600" />
+                        <span className="text-sm">Nueva visita registrada</span>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">hace 10 min</span>
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="h-5 w-5 rounded bg-purple-600" />
+                        <span className="text-sm">Reporte generado</span>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">ayer</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card className="backdrop-blur-sm" style={{ backgroundColor: theme.surface.glassLight }}>
+                <CardHeader>
+                  <CardTitle>Acciones rápidas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-3">
+                    <QuickActionButton label="Nueva visita" color="blue" icon={AddRegular} onClick={() => setShowVisitorModal(true)} />
+                    <QuickActionButton label="Configurar" icon={SettingsRegular} color="purple" onClick={() => setShowGeneralConfigModal(true)} />
+                    <QuickActionButton label="Usuarios" icon={PeopleCommunityRegular} color="indigo" onClick={() => setShowUserViewModal(true)} />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Estadísticas del sistema */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6" role="region" aria-label="Estadísticas del sistema">
-          <DashboardStatCard
-            title="Estado del Sistema"
-            value="Operativo"
-            icon={CheckmarkCircleRegular}
-            color="green"
-            subtitle="Todo funcionando correctamente"
-          />
-          <DashboardStatCard
-            title="Hora Actual"
-            value={currentTime}
-            icon={ClockRegular}
-            color="blue"
-            subtitle="Hora del servidor"
-          />
-          <DashboardStatCard
-            title="Seguridad"
-            value="Activa"
-            icon={ShieldCheckmarkRegular}
-            color="purple"
-            subtitle="Sistema protegido"
-          />
-        </div>
-      </main>
-
-      {/* Modales */}
-      <UserRegistrationModal 
-        isOpen={modals.userRegistration} 
-        onClose={() => toggleModal('userRegistration', false)}
-        onUserCreated={() => console.log('Usuario creado exitosamente')}
-      />
-      <RoleManagementModal 
-        isOpen={modals.roleManagement} 
-        onClose={() => toggleModal('roleManagement', false)}
-        onRoleUpdated={() => console.log('Rol actualizado exitosamente')}
-      />
-      <PermissionManagementModal 
-        isOpen={modals.permissionManagement} 
-        onClose={() => toggleModal('permissionManagement', false)}
-        onPermissionUpdated={() => console.log('Permisos actualizados exitosamente')}
-      />
-      <AuditManagementModal 
-        isOpen={modals.auditManagement} 
-        onClose={() => toggleModal('auditManagement', false)}
-        onAuditUpdated={() => console.log('Auditoría actualizada exitosamente')}
-      />
-      <UserViewModal 
-        isOpen={modals.userView} 
-        onClose={() => toggleModal('userView', false)}
-        onUserUpdated={() => console.log('Usuario actualizado exitosamente')}
-      />
-      <RegionSiteManagementModal 
-        isOpen={modals.regionSiteManagement} 
-        onClose={() => toggleModal('regionSiteManagement', false)}
-        onRegionSiteUpdated={() => console.log('Región/Sede actualizada exitosamente')}
-      />
-      <DepartmentRankManagementModal 
-        isOpen={modals.departmentRankManagement} 
-        onClose={() => toggleModal('departmentRankManagement', false)}
-        onDepartmentRankUpdated={() => console.log('Departamento/Rango actualizado exitosamente')}
-      />
-      <VisitorManagementModal 
-        isOpen={modals.visitorManagement} 
-        onClose={() => toggleModal('visitorManagement', false)}
-        onVisitorUpdated={() => console.log('Visitante actualizado exitosamente')}
-      />
-      <GeneralConfigurationModal 
-        isOpen={modals.generalConfiguration} 
-        onClose={() => toggleModal('generalConfiguration', false)}
-        onConfigurationUpdated={() => console.log('Configuración actualizada exitosamente')}
-      />
-    </div>
+      <UserRegistrationModal isOpen={showUserModal} onClose={() => setShowUserModal(false)} onUserCreated={() => setStats(p => ({ ...p, totalUsers: p.totalUsers + 1 }))} />
+      <GeneralConfigurationModal isOpen={showGeneralConfigModal} onClose={() => setShowGeneralConfigModal(false)} onConfigurationUpdated={() => {}} />
+      <RoleManagementModal isOpen={showRoleModal} onClose={() => setShowRoleModal(false)} onRoleUpdated={() => {}} />
+      <PermissionManagementModal isOpen={showPermissionModal} onClose={() => setShowPermissionModal(false)} onPermissionUpdated={() => {}} />
+      <AuditManagementModal isOpen={showAuditModal} onClose={() => setShowAuditModal(false)} onAuditUpdated={() => {}} />
+      <UserViewModal isOpen={showUserViewModal} onClose={() => setShowUserViewModal(false)} onUserUpdated={() => {}} />
+      <RegionSiteManagementModal isOpen={showRegionSiteModal} onClose={() => setShowRegionSiteModal(false)} onRegionSiteUpdated={() => {}} />
+      <DepartmentRankManagementModal isOpen={showDepartmentRankModal} onClose={() => setShowDepartmentRankModal(false)} onDepartmentRankUpdated={() => {}} />
+      <VisitorManagementModal isOpen={showVisitorModal} onClose={() => setShowVisitorModal(false)} onVisitorUpdated={() => {}} />
+    </DashboardLayout>
   )
 }

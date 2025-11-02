@@ -21,6 +21,22 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useAuthStore } from '@/stores/auth'
 
+// Tipos de color compartidos para tarjetas y acciones del dashboard
+export type DashboardColor =
+  | 'green'
+  | 'blue'
+  | 'yellow'
+  | 'red'
+  | 'purple'
+  | 'orange'
+  | 'indigo'
+  | 'amber'
+  | 'slate'
+  | 'cyan'
+  | 'teal'
+  | 'rose'
+  | 'gray'
+
 interface DashboardHeaderProps {
   title: string
   subtitle?: string
@@ -51,14 +67,18 @@ export function DashboardHeader({ title, subtitle, showTime = true, children }: 
             </h1>
             {subtitle && (
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {subtitle} {showTime && `- ${currentTime.toLocaleTimeString('es-VE')}`}
+                {subtitle}{showTime ? ` - ${currentTime.toLocaleTimeString('es-VE')}` : ''}
               </p>
             )}
           </div>
           <div className="flex items-center space-x-4">
             {children}
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {user ? `${user.first_name} ${user.last_name}` : 'Usuario'}
+              {(() => {
+                if (!user) return 'Usuario'
+                const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                return fullName || (user as any).name || user.username || user.email || 'Usuario'
+              })()}
             </div>
           </div>
         </div>
@@ -71,7 +91,7 @@ interface DashboardStatCardProps {
   title: string
   value: string | number
   icon: React.ComponentType<{ className?: string }>
-  color?: 'green' | 'blue' | 'yellow' | 'red' | 'purple' | 'orange' | 'indigo'
+  color?: DashboardColor
   subtitle?: string
   trend?: { value: number; direction: 'up' | 'down' }
 }
@@ -84,14 +104,20 @@ export function DashboardStatCard({
   subtitle,
   trend
 }: DashboardStatCardProps) {
-  const colorClasses = {
+  const colorClasses: Record<DashboardColor, string> = {
     green: 'text-green-600 bg-green-100',
     blue: 'text-blue-600 bg-blue-100',
     yellow: 'text-yellow-600 bg-yellow-100',
     red: 'text-red-600 bg-red-100',
     purple: 'text-purple-600 bg-purple-100',
     orange: 'text-orange-600 bg-orange-100',
-    indigo: 'text-indigo-600 bg-indigo-100'
+    indigo: 'text-indigo-600 bg-indigo-100',
+    amber: 'text-amber-600 bg-amber-100',
+    slate: 'text-slate-600 bg-slate-100',
+    cyan: 'text-cyan-600 bg-cyan-100',
+    teal: 'text-teal-600 bg-teal-100',
+    rose: 'text-rose-600 bg-rose-100',
+    gray: 'text-gray-600 bg-gray-100'
   }
 
   const trendColors = {
@@ -127,11 +153,11 @@ interface DashboardActionCardProps {
     name: string
     icon: React.ComponentType<{ className?: string }>
     action: () => void
-    color?: 'green' | 'blue' | 'yellow' | 'red' | 'purple' | 'orange' | 'indigo' | 'gray'
+    color?: DashboardColor
     variant?: 'default' | 'outline'
   }>
   icon: React.ComponentType<{ className?: string }>
-  color?: 'green' | 'blue' | 'yellow' | 'red' | 'purple' | 'orange' | 'indigo'
+  color?: DashboardColor
 }
 
 export function DashboardActionCard({ 
@@ -141,7 +167,7 @@ export function DashboardActionCard({
   icon: Icon, 
   color = 'blue' 
 }: DashboardActionCardProps) {
-  const colorClasses = {
+  const colorClasses: Record<DashboardColor, string> = {
     green: 'text-green-600',
     blue: 'text-blue-600',
     yellow: 'text-yellow-600',
@@ -149,10 +175,15 @@ export function DashboardActionCard({
     purple: 'text-purple-600',
     orange: 'text-orange-600',
     indigo: 'text-indigo-600',
+    amber: 'text-amber-600',
+    slate: 'text-slate-600',
+    cyan: 'text-cyan-600',
+    teal: 'text-teal-600',
+    rose: 'text-rose-600',
     gray: 'text-gray-600'
   }
 
-  const buttonVariants = {
+  const buttonVariants: Record<DashboardColor, string> = {
     green: 'bg-green-600 hover:bg-green-700 text-white',
     blue: 'bg-blue-600 hover:bg-blue-700 text-white',
     yellow: 'bg-yellow-600 hover:bg-yellow-700 text-white',
@@ -160,6 +191,11 @@ export function DashboardActionCard({
     purple: 'bg-purple-600 hover:bg-purple-700 text-white',
     orange: 'bg-orange-600 hover:bg-orange-700 text-white',
     indigo: 'bg-indigo-600 hover:bg-indigo-700 text-white',
+    amber: 'bg-amber-600 hover:bg-amber-700 text-white',
+    slate: 'bg-slate-600 hover:bg-slate-700 text-white',
+    cyan: 'bg-cyan-600 hover:bg-cyan-700 text-white',
+    teal: 'bg-teal-600 hover:bg-teal-700 text-white',
+    rose: 'bg-rose-600 hover:bg-rose-700 text-white',
     gray: 'bg-gray-600 hover:bg-gray-700 text-white'
   }
 
@@ -220,22 +256,23 @@ interface DashboardLayoutProps {
   children: React.ReactNode
   title: string
   subtitle?: string
+  showTime?: boolean
 }
 
-export function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
+export function DashboardLayout({ children, title, subtitle, showTime = true }: DashboardLayoutProps) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950">
       {/* Venezuela Map Background */}
-      <div className="absolute inset-0 opacity-15 dark:opacity-8">
+      <div className="absolute inset-0 opacity-10 dark:opacity-20">
         {/* Este componente se importaría del proyecto principal */}
         {/* <VenezuelaMapWrapper /> */}
       </div>
 
       {/* Overlay */}
-      <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] dark:bg-slate-950/70" />
+      <div className="absolute inset-0 bg-white/20 backdrop-blur-sm dark:bg-slate-950/40" />
 
       {/* Header */}
-      <DashboardHeader title={title} subtitle={subtitle} />
+      <DashboardHeader title={title} subtitle={subtitle} showTime={showTime} />
 
       {/* Main Content */}
       <main className="relative z-20 p-6">
@@ -286,7 +323,7 @@ interface QuickActionButtonProps {
   label: string
   onClick: () => void
   variant?: 'default' | 'outline'
-  color?: 'green' | 'blue' | 'yellow' | 'red' | 'purple' | 'orange' | 'indigo'
+  color?: DashboardColor
 }
 
 export function QuickActionButton({ 
@@ -296,14 +333,20 @@ export function QuickActionButton({
   variant = 'outline',
   color = 'blue'
 }: QuickActionButtonProps) {
-  const colorClasses = {
+  const colorClasses: Record<DashboardColor, string> = {
     green: 'bg-green-600 hover:bg-green-700 text-white',
     blue: 'bg-blue-600 hover:bg-blue-700 text-white',
     yellow: 'bg-yellow-600 hover:bg-yellow-700 text-white',
     red: 'bg-red-600 hover:bg-red-700 text-white',
     purple: 'bg-purple-600 hover:bg-purple-700 text-white',
     orange: 'bg-orange-600 hover:bg-orange-700 text-white',
-    indigo: 'bg-indigo-600 hover:bg-indigo-700 text-white'
+    indigo: 'bg-indigo-600 hover:bg-indigo-700 text-white',
+    amber: 'bg-amber-600 hover:bg-amber-700 text-white',
+    slate: 'bg-slate-600 hover:bg-slate-700 text-white',
+    cyan: 'bg-cyan-600 hover:bg-cyan-700 text-white',
+    teal: 'bg-teal-600 hover:bg-teal-700 text-white',
+    rose: 'bg-rose-600 hover:bg-rose-700 text-white',
+    gray: 'bg-gray-600 hover:bg-gray-700 text-white'
   }
 
   return (

@@ -29,7 +29,7 @@
       "@composables/*": ["./src/composables/*"],
       "@assets/*": ["./src/assets/*"]
     },
-    "types": ["vite/client", "node"]
+    "types": ["vite/client", "node", "@webgpu/types"]
   },
   "include": ["env.d.ts", "src/**/*", "tests/**/*"],
   "exclude": ["src/**/__tests__/*", "node_modules", "dist"]

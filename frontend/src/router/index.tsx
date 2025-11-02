@@ -4,12 +4,13 @@ import ErrorPage from '@/pages/ErrorPage'
 
 // Layouts
 import DefaultLayout from '@/layouts/DefaultLayout'
-import AuthLayout from '@/layouts/AuthLayout'
+// import AuthLayout from '@/layouts/AuthLayout'
 
 // Páginas principales
 import Home from '@/pages/Home'
 import Login from '@/pages/auth/Login'
-import Register from '@/pages/auth/Register'
+// import Register from '@/pages/auth/Register'
+import Forbidden from '@/pages/Forbidden'
 import Dashboard from '@/pages/Dashboard'
 import NotFound from '@/pages/NotFound'
 
@@ -52,25 +53,7 @@ const routes: RouteObject[] = [
       title: 'Iniciar Sesión',
     },
   },
-  {
-    path: '/auth/register',
-    element: (
-      <GuestGuard>
-        <AuthLayout />
-      </GuestGuard>
-    ),
-    errorElement: <ErrorPage />,
-    children: [
-      {
-        index: true,
-        element: <Register />,
-        errorElement: <ErrorPage />,
-        handle: {
-          title: 'Registrarse',
-        },
-      },
-    ],
-  },
+  // Registro público eliminado: el registro lo realizan roles internos (admin/supervisor/recepción)
   {
     path: '/dashboard',
     element: (
@@ -101,6 +84,15 @@ const routes: RouteObject[] = [
     ),
     errorElement: <ErrorPage />,
     children: [
+      {
+        index: true,
+        element: <Admin />,
+        errorElement: <ErrorPage />,
+        handle: {
+          title: 'Administración',
+          breadcrumb: 'Administración',
+        },
+      },
       {
         path: 'dashboard',
         element: <AdminDashboard />,
@@ -135,7 +127,7 @@ const routes: RouteObject[] = [
   {
     path: '/reception',
     element: (
-      <RoleGuard allowedRoles={['recepcion', 'reception']}>
+      <RoleGuard allowedRoles={['recepcion']}>
         <DefaultLayout />
       </RoleGuard>
     ),
@@ -222,26 +214,15 @@ const routes: RouteObject[] = [
       },
     ],
   },
+  // Ruta duplicada de /admin eliminada (se unifica bajo RoleGuard)
   {
-    path: '/admin',
-    element: (
-      <AdminGuard>
-        <DefaultLayout />
-      </AdminGuard>
-    ),
+    path: '/forbidden',
+    element: <Forbidden />,
     errorElement: <ErrorPage />,
-    children: [
-      {
-        index: true,
-        element: <Admin />,
-        errorElement: <ErrorPage />,
-        handle: {
-          title: 'Administración',
-          breadcrumb: 'Administración',
-        },
-      },
-
-    ],
+    handle: {
+      title: 'Acceso denegado',
+      breadcrumb: '403',
+    },
   },
   {
     path: '*',

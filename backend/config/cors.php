@@ -18,7 +18,8 @@ return [
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => $this->getAllowedOrigins(),
+    // Usa la función global definida al final del archivo
+    'allowed_origins' => getAllowedOrigins(),
 
     'allowed_origins_patterns' => [],
 
@@ -52,9 +53,10 @@ return [
 function getAllowedOrigins(): array
 {
     $origins = [];
+    $env = env('APP_ENV', 'production');
     
     // Entorno local
-    if (app()->environment('local')) {
+    if ($env === 'local') {
         $origins = array_merge($origins, [
             'http://localhost:3000',
             'http://localhost:5173',
@@ -64,7 +66,7 @@ function getAllowedOrigins(): array
     }
     
     // Entorno de desarrollo
-    if (app()->environment('development')) {
+    if ($env === 'development' || $env === 'dev') {
         $origins = array_merge($origins, [
             env('FRONTEND_URL', 'https://dev.tudominio.com'),
             'https://*.vercel.app', // Para deploys de Vercel
@@ -73,7 +75,7 @@ function getAllowedOrigins(): array
     }
     
     // Entorno de producción
-    if (app()->environment('production')) {
+    if ($env === 'production' || $env === 'prod') {
         $origins = array_merge($origins, [
             env('FRONTEND_URL'),
             env('FRONTEND_URL_ALT'), // URL alternativa si existe
