@@ -12,8 +12,9 @@ export default {
   ],
   theme: {
     extend: {
-      // Tokens de color semánticos basados en variables CSS definidas en main.css
+      // Configuración unificada de colores
       colors: {
+        // Tokens de color semánticos basados en variables CSS definidas en main.css
         background: 'var(--background)',
         foreground: 'var(--foreground)',
         card: 'var(--card)',
@@ -43,9 +44,7 @@ export default {
         'sidebar-accent-foreground': 'var(--sidebar-accent-foreground)',
         'sidebar-border': 'var(--sidebar-border)',
         'sidebar-ring': 'var(--sidebar-ring)',
-      },
-      // Paletas tradicionales para utilidades y gráficos
-      colors: {
+        // Paletas tradicionales para utilidades y gráficos
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',

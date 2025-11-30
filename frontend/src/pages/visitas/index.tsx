@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { 
+import {
   PlusIcon,
   EyeIcon,
   PencilIcon,
@@ -14,6 +14,7 @@ interface Visita {
   id: number
   nombre_visitante: string
   empresa: string
+  documento: string
   fecha: string
   hora_entrada: string
   hora_salida: string | null
@@ -27,7 +28,7 @@ const VisitasIndex: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('')
-  
+
   useEffect(() => {
     // Simular carga de datos
     const loadVisitas = async () => {
@@ -39,21 +40,23 @@ const VisitasIndex: React.FC = () => {
             id: 1,
             nombre_visitante: 'Juan Pérez',
             empresa: 'Tech Solutions',
+            documento: '12345678A',
             fecha: '2023-10-15',
-            hora_entrada: '09:30',
-            hora_salida: '11:00',
-            motivo: 'Reunión de negocios',
+            hora_entrada: '09:00',
+            hora_salida: '11:30',
+            motivo: 'Reunión comercial',
             estado: 'completada',
             usuario_registro: 'Admin'
           },
           {
             id: 2,
-            nombre_visitante: 'María García',
-            empresa: 'Global Corp',
+            nombre_visitante: 'María González',
+            empresa: 'Global Consulting',
+            documento: '23456789B',
             fecha: '2023-10-16',
             hora_entrada: '14:00',
             hora_salida: null,
-            motivo: 'Entrevista de trabajo',
+            motivo: 'Consultoría técnica',
             estado: 'en_proceso',
             usuario_registro: 'Admin'
           },
@@ -61,6 +64,7 @@ const VisitasIndex: React.FC = () => {
             id: 3,
             nombre_visitante: 'Carlos Rodríguez',
             empresa: 'Innovation Labs',
+            documento: '34567890C',
             fecha: '2023-10-17',
             hora_entrada: '10:00',
             hora_salida: null,
@@ -72,10 +76,10 @@ const VisitasIndex: React.FC = () => {
         setIsLoading(false)
       }, 1000)
     }
-    
+
     loadVisitas()
   }, [])
-  
+
   const getEstadoColor = (estado: string) => {
     switch (estado) {
       case 'completada':
@@ -88,14 +92,14 @@ const VisitasIndex: React.FC = () => {
         return 'bg-gray-100 text-gray-800'
     }
   }
-  
+
   const filteredVisitas = visitas.filter(visita => {
     const matchesSearch = visita.nombre_visitante.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         visita.empresa.toLowerCase().includes(searchTerm.toLowerCase())
+      visita.empresa.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesEstado = !filterEstado || visita.estado === filterEstado
     return matchesSearch && matchesEstado
   })
-  
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -118,7 +122,7 @@ const VisitasIndex: React.FC = () => {
           </Link>
         </div>
       </div>
-      
+
       {/* Filters */}
       <div className="bg-white shadow rounded-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -153,7 +157,7 @@ const VisitasIndex: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Table */}
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         {isLoading ? (
