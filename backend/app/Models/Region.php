@@ -9,7 +9,7 @@ class Region extends Model
 {
     use HasFactory;
 
-    protected $table = 'regiones';
+    protected $table = 'regions';
 
     protected $fillable = [
         'name',

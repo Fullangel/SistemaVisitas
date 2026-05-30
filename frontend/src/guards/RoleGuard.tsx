@@ -5,13 +5,11 @@ import { useAuthStore } from '@/stores/auth'
 interface RoleGuardProps {
   children: React.ReactNode
   allowedRoles: string[]
-  redirectTo?: string
 }
 
-export const RoleGuard: React.FC<RoleGuardProps> = ({ 
-  children, 
-  allowedRoles, 
-  redirectTo = '/dashboard' 
+export const RoleGuard: React.FC<RoleGuardProps> = ({
+  children,
+  allowedRoles
 }) => {
   const { user, isAuthenticated } = useAuthStore()
   const location = useLocation()
@@ -29,7 +27,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   // Verificar si el rol del usuario está en los roles permitidos
   const userRole = user.role?.name?.toLowerCase() || ''
   const normalizedAllowedRoles = allowedRoles.map(role => role.toLowerCase())
-  
+
   if (!normalizedAllowedRoles.includes(userRole)) {
     // Si no tiene el rol permitido, redirigir a 403
     return <Navigate to="/forbidden" replace />

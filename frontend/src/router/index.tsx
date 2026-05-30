@@ -22,6 +22,7 @@ import ActiveVisits from '@/pages/visits/ActiveVisits.tsx'
 import ApproveVisits from '@/pages/visits/ApproveVisits.tsx'
 import BlockedVisitors from '@/pages/visits/BlockedVisitors.tsx'
 import SearchVisitor from '@/pages/visits/SearchVisitor.tsx'
+import VerifyVisitor from '@/pages/VerifyVisitor'
 import Reports from '@/pages/reports'
 import PorSede from '@/pages/reports/PorSede'
 import PorPeriodo from '@/pages/reports/PorPeriodo'
@@ -73,6 +74,14 @@ const routes: RouteObject[] = [
     errorElement: <ErrorPage />,
     handle: {
       title: 'Inicio',
+    },
+  },
+  {
+    path: '/verify/:visitCode',
+    element: <VerifyVisitor />,
+    errorElement: <ErrorPage />,
+    handle: {
+      title: 'Verificar Visita',
     },
   },
   {

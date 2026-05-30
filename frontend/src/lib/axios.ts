@@ -3,11 +3,12 @@ import { useAuthStore } from '@/stores/auth'
 
 // Crear instancia de axios con configuración base
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true,
+  timeout: 10000, // 10 seconds timeout
 })
 
 // Interceptor de petición para agregar token
@@ -30,12 +31,28 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const status = error.response?.status
-    if (status !== 401) return Promise.reject(error)
-
     const originalRequest = error.config
 
+    // Si no es 401, rechazar directamente
+    if (status !== 401) return Promise.reject(error)
+
+    // Si es la petición de login, logout o refresh-token que falló, no intentar refrescar
+    if (
+      originalRequest.url?.includes('/login') ||
+      originalRequest.url?.includes('/logout') ||
+      originalRequest.url?.includes('/refresh-token')
+    ) {
+      // Para login, simplemente rechazar el error para que se muestre el mensaje
+      // Para logout/refresh, limpiar sesión y redirigir
+      if (originalRequest.url?.includes('/logout') || originalRequest.url?.includes('/refresh-token')) {
+        localStorage.removeItem('token')
+        window.location.href = '/auth/login'
+      }
+      return Promise.reject(error)
+    }
+
+    // Si ya se está refrescando, agregar a cola
     if (isRefreshing) {
-      // Cola de peticiones mientras se refresca
       return new Promise((resolve) => {
         pendingRequests.push((token) => {
           if (token) {
@@ -49,6 +66,7 @@ api.interceptors.response.use(
       })
     }
 
+    // Intentar refrescar el token
     isRefreshing = true
     try {
       const refreshResponse = await api.post('/refresh-token')
@@ -68,17 +86,17 @@ api.interceptors.response.use(
         return api(originalRequest)
       }
 
-      // Si no hay token nuevo, proceder a logout
+      // Si no hay token nuevo, cerrar sesión
       pendingRequests.forEach((cb) => cb(null))
       pendingRequests = []
-      useAuthStore.getState().logout().catch(() => {})
+      localStorage.removeItem('token')
       window.location.href = '/auth/login'
       return Promise.reject(error)
     } catch (refreshError) {
       // Falló el refresh; cerrar sesión
       pendingRequests.forEach((cb) => cb(null))
       pendingRequests = []
-      useAuthStore.getState().logout().catch(() => {})
+      localStorage.removeItem('token')
       window.location.href = '/auth/login'
       return Promise.reject(refreshError)
     } finally {

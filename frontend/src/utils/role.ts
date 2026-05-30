@@ -18,12 +18,16 @@ export function normalizeRoleName(role?: string | RoleName): RoleName | null {
 
 export function getDefaultRouteForRole(role?: string | RoleName): string {
   const r = normalizeRoleName(role)
+  // Todos los roles usan el mismo dashboard moderno
+  // Las diferencias de permisos se manejan dentro del dashboard
   switch (r) {
-    case 'admin': return '/admin/dashboard'
-    case 'supervisor': return '/supervisor/dashboard'
-    case 'recepcion': return '/reception/dashboard'
-    case 'employee': return '/employee/dashboard'
-    case 'visitor': return '/dashboard'
-    default: return '/dashboard'
+    case 'admin':
+    case 'supervisor':
+    case 'recepcion':
+    case 'employee':
+    case 'visitor':
+      return '/dashboard'
+    default:
+      return '/dashboard'
   }
 }

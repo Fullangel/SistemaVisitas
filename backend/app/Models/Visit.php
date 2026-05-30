@@ -81,6 +81,21 @@ class Visit extends Model
         return $this->hasMany(VisitAttachment::class);
     }
 
+    public function photos()
+    {
+        return $this->hasMany(VisitPhoto::class);
+    }
+
+    public function visitorPhoto()
+    {
+        return $this->hasOne(VisitPhoto::class)->where('photo_type', 'visitor');
+    }
+
+    public function idCardPhoto()
+    {
+        return $this->hasOne(VisitPhoto::class)->where('photo_type', 'id_card');
+    }
+
     public function getStatusLabelAttribute()
     {
         return [

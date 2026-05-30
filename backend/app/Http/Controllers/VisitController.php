@@ -4,12 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\Visit;
 use App\Models\VisitLog;
+use App\Models\VisitPhoto;
+use App\Services\PhotoProcessingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class VisitController extends Controller
 {
+    protected $photoService;
+
+    public function __construct(PhotoProcessingService $photoService)
+    {
+        $this->photoService = $photoService;
+    }
+
     public function index(Request $request)
     {
         $query = Visit::withCommonRelations()->withOptionalRelations();
@@ -47,6 +56,51 @@ class VisitController extends Controller
         return response()->json($visits);
     }
 
+    /**
+     * Verify visit by visit code (for QR scanning)
+     */
+    public function verify($visitCode)
+    {
+        $visit = Visit::with(['employee', 'department', 'headquarter'])
+            ->where('visit_code', $visitCode)
+            ->first();
+
+        if (!$visit) {
+            return response()->json([
+                'message' => 'Visita no encontrada'
+            ], 404);
+        }
+
+        return response()->json($visit);
+    }
+
+
+    /**
+     * Get active visits (in_progress status)
+     */
+    public function active()
+    {
+        $visits = Visit::with(['employee', 'department', 'headquarter', 'creator', 'approver'])
+            ->where('status', 'in_progress')
+            ->orderBy('entry_time', 'desc')
+            ->get();
+
+        return response()->json($visits);
+    }
+
+    /**
+     * Get pending visits (pending status)
+     */
+    public function pending()
+    {
+        $visits = Visit::with(['employee', 'department', 'headquarter', 'creator', 'approver'])
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($visits);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -68,6 +122,8 @@ class VisitController extends Controller
             'department_id' => 'required|exists:departments,id',
             'headquarter_id' => 'required|exists:headquarters,id',
             'priority' => 'required|in:low,medium,high,urgent',
+            'visitor_photo' => 'required|string', // base64
+            'id_card_photo' => 'nullable|string', // base64
         ]);
 
         DB::beginTransaction();
@@ -102,6 +158,60 @@ class VisitController extends Controller
                 'created_by' => Auth::id(),
             ]);
 
+            // Procesar foto del visitante (obligatoria)
+            if ($request->visitor_photo) {
+                try {
+                    $photoPaths = $this->photoService->processVisitorPhoto(
+                        $request->visitor_photo,
+                        $visit->id
+                    );
+
+                    VisitPhoto::create([
+                        'visit_id' => $visit->id,
+                        'photo_type' => 'visitor',
+                        'original_path' => $photoPaths['original_path'],
+                        'medium_path' => $photoPaths['medium_path'],
+                        'thumbnail_path' => $photoPaths['thumbnail_path'],
+                        'file_size' => $photoPaths['file_size'],
+                        'mime_type' => 'image/webp'
+                    ]);
+                } catch (\Exception $e) {
+                    // Si falla el procesamiento de foto, hacer rollback
+                    DB::rollback();
+                    return response()->json([
+                        'message' => 'Error processing visitor photo',
+                        'error' => $e->getMessage()
+                    ], 500);
+                }
+            }
+
+            // Procesar foto de cédula (opcional)
+            if ($request->id_card_photo) {
+                try {
+                    $idCardPaths = $this->photoService->processIdCardPhoto(
+                        $request->id_card_photo,
+                        $visit->id
+                    );
+
+                    VisitPhoto::create([
+                        'visit_id' => $visit->id,
+                        'photo_type' => 'id_card',
+                        'original_path' => $idCardPaths['original_path'],
+                        'medium_path' => $idCardPaths['medium_path'],
+                        'thumbnail_path' => $idCardPaths['thumbnail_path'],
+                        'file_size' => $idCardPaths['file_size'],
+                        'mime_type' => 'image/webp'
+                    ]);
+                } catch (\Exception $e) {
+                    // Si falla el procesamiento de cédula, hacer rollback
+                    DB::rollback();
+                    return response()->json([
+                        'message' => 'Error processing ID card photo',
+                        'error' => $e->getMessage()
+                    ], 500);
+                }
+            }
+
             // Registrar log de creación
             VisitLog::create([
                 'visit_id' => $visit->id,
@@ -116,7 +226,7 @@ class VisitController extends Controller
 
             return response()->json([
                 'message' => 'Visit created successfully',
-                'visit' => $visit->load(['employee', 'department', 'headquarter', 'creator'])
+                'visit' => $visit->load(['employee', 'department', 'headquarter', 'creator', 'photos'])
             ], 201);
 
         } catch (\Exception $e) {

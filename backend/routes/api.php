@@ -126,8 +126,13 @@ Route::middleware(['jwt.auth', 'rate.role'])->group(function () {
             Route::get('/regions/{id}', [RegionController::class, 'show']);
         });
     
+        // Public route for QR code verification (no authentication required)
+        Route::get('/visits/verify/{visitCode}', [VisitController::class, 'verify']);
+    
         // Rutas de recepción (solo visitas)
         Route::middleware(['jwt.role:admin,supervisor,recepcion'])->group(function () {
+            Route::get('/visits/active', [VisitController::class, 'active']);
+            Route::get('/visits/pending', [VisitController::class, 'pending']);
             Route::get('/visits', [VisitController::class, 'index']);
             Route::post('/visits', [VisitController::class, 'store']);
             Route::get('/visits/{id}', [VisitController::class, 'show']);

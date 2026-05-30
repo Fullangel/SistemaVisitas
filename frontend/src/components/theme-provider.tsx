@@ -1,4 +1,3 @@
-"use client"
 
 import type React from "react"
 import type { ReactNode } from "react"
@@ -41,22 +40,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Actualizar tema actual basado en la configuración
   useEffect(() => {
     let newActualTheme: "light" | "dark"
-    
+
     if (theme === "system") {
       newActualTheme = getSystemTheme()
-      
+
       // Escuchar cambios en la preferencia del sistema
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
       const handleChange = (e: MediaQueryListEvent) => {
         setActualTheme(e.matches ? "dark" : "light")
       }
-      
+
       mediaQuery.addEventListener("change", handleChange)
       return () => mediaQuery.removeEventListener("change", handleChange)
     } else {
       newActualTheme = theme
     }
-    
+
     setActualTheme(newActualTheme)
   }, [theme])
 
@@ -64,7 +63,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem("theme", theme)
     document.documentElement.classList.toggle("dark", actualTheme === "dark")
-    
+
     // Agregar clase para transiciones suaves
     document.documentElement.style.setProperty("color-scheme", actualTheme)
   }, [theme, actualTheme])
